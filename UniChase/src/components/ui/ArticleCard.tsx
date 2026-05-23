@@ -9,7 +9,7 @@ interface ArticleCardProps {
   linkTo: string
 }
 
-export default function ArticleCard({ id, category, readTime, title, image, linkTo }: ArticleCardProps) {
+export default function ArticleCard({ category, readTime, title, image, linkTo }: ArticleCardProps) {
   return (
     <Link to={linkTo} className="flex gap-3 items-start hover:opacity-80 transition-opacity">
       <img

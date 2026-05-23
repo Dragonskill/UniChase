@@ -24,7 +24,7 @@ const slides = [
 
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0)
-  const [direction, setDirection] = useState(1)
+  const [, setDirection] = useState(1)
 
   useEffect(() => {
     const timer = setInterval(() => {
