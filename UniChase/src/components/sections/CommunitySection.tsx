@@ -1,24 +1,22 @@
 import { Link } from 'react-router-dom'
-import CommunityRow from '@/components/ui/CommunityRow'
-
-const posts = [
-  { id: 1, tag: 'Promotion', title: 'Recruitment Notice for the 2026 Daegu Chimac Festival 99 Cheers Challenge', isNew: true, comments: 1, date: '20 May' },
-  { id: 2, tag: 'Promotion', title: '2026 Daegu Chimac Festival Global Chimac Friends Recruitment', date: '20 May' },
-  { id: 3, tag: 'Career', title: 'CJ ChaeilJedang Global Internship Interview', date: '18 May' },
-  { id: 4, tag: 'Career', title: 'Interested in Living in Korea While Learning Beauty Skills?', date: '13 May' },
-  { id: 5, tag: 'Promotion', title: 'A Meditative Concert in Between <Sai... Sori... Sum...>', date: '12 May' },
-]
+import { forumPosts } from '@/data/community'
 
 export default function CommunitySection() {
   return (
-    <section className="mt-12">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-bold tracking-wide text-gray-900">COMMUNITY</h2>
-        <Link to="/community" className="text-sm text-gray-500 hover:text-blue-500">See all →</Link>
+    <section className="mt-12 sm:mt-16">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">COMMUNITY</h2>
+        <Link to="/community" className="text-sm text-muted hover:text-teal transition-colors">See all →</Link>
       </div>
-      <div className="flex flex-col">
-        {posts.map((p) => (
-          <CommunityRow key={p.id} {...p} />
+
+      <div className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
+        {forumPosts.slice(0, 5).map((post) => (
+          <Link key={post.id} to={`/community/${post.id}`} className="flex items-center gap-3 p-4 hover:bg-cream transition-colors">
+            <span className="text-xs bg-cream-dark text-ink px-2 py-0.5 rounded flex-shrink-0">{post.tag}</span>
+            <p className="text-sm text-ink flex-1 truncate">{post.title}</p>
+            {post.isNew && <span className="text-xs text-teal font-semibold flex-shrink-0">NEW</span>}
+            <span className="text-xs text-muted flex-shrink-0">{post.date}</span>
+          </Link>
         ))}
       </div>
     </section>

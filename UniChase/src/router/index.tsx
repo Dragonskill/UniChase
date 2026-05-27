@@ -7,7 +7,8 @@ import ReviewList from '../pages/Reviews/ReviewList'
 import ReviewDetail from '../pages/Reviews/ReviewDetail'
 import NewsList from '../pages/News/NewsList'
 import NewsDetail from '../pages/News/NewsDetail'
-import Careers from '../pages/Careers'
+import Careers from '../pages/Careers/Careers'
+import CareerDetail from '../pages/Careers/CareerDetail'
 import Forum from '../pages/Community/Forum'
 import PostDetail from '../pages/Community/PostDetail'
 import Login from '../pages/auth/Login'
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: '/news',            element: <NewsList /> },
       { path: '/news/:id',        element: <NewsDetail /> },
       { path: '/careers',         element: <Careers /> },
+      { path: '/careers/:id', element: <CareerDetail /> },
       { path: '/community',       element: <Forum /> },
       { path: '/community/:id',   element: <PostDetail /> },
       { path: '/login',           element: <Login /> },

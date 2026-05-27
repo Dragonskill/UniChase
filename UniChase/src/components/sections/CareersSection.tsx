@@ -1,24 +1,26 @@
 import { Link } from 'react-router-dom'
-import CareerCard from '@/components/ui/CareerCard'
-
-const careers = [
-  { id: 1, logo: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=100&q=80', title: '[MAMF] Korea Migrant Song Festival Applications', company: 'Migrants Arirang Multicultural Festival Committee', type: 'Extracurricular activities', daysLeft: 66 },
-  { id: 2, logo: 'https://images.unsplash.com/photo-1567446537708-ac4aa75c9c28?w=100&q=80', title: 'Recruiting the 18th Jin Ramyun JIN&JINY "Go-To Jin!"', company: 'Otoki', type: 'Extracurricular activities', daysLeft: 24 },
-  { id: 3, logo: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=100&q=80', title: '[Busan International Film Festival] Recruitment for Pla...', company: 'Busan International Film Festival Organizing Committee', type: 'Full time', daysLeft: 10 },
-  { id: 4, logo: 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?w=100&q=80', title: '[DAEHAKNAEIL] Zetplanet-K member recruitment', company: 'DAEHAKNAEIL', type: 'Extracurricular activities', daysLeft: 10 },
-  { id: 5, logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100&q=80', title: '[HanmiGlobal] Recruitment for International Applicants', company: 'HanmiGlobal', type: 'Full time', daysLeft: 8 },
-]
+import { careers } from '@/data/careers'
 
 export default function CareersSection() {
   return (
-    <section className="mt-12">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-bold tracking-wide text-gray-900">CAREERS</h2>
-        <Link to="/careers" className="text-sm text-gray-500 hover:text-blue-500">See all →</Link>
+    <section className="mt-12 sm:mt-16">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">CAREERS</h2>
+        <Link to="/careers" className="text-sm text-muted hover:text-teal transition-colors">See all →</Link>
       </div>
-      <div className="flex flex-col">
-        {careers.map((c) => (
-          <CareerCard key={c.id} {...c} />
+
+      <div className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
+        {careers.slice(0, 5).map((job) => (
+          <Link key={job.id} to={`/careers/${job.id}`} className="flex items-center gap-4 p-4 hover:bg-cream transition-colors first:rounded-t-2xl last:rounded-b-2xl">
+            <img src={job.logo} alt={job.company} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-semibold text-navy truncate">{job.title}</p>
+                <span className="text-xs bg-teal/10 text-teal px-2 py-0.5 rounded-full flex-shrink-0 font-medium">D-{job.daysLeft}</span>
+              </div>
+              <p className="text-xs text-muted truncate">{job.company} · {job.type}</p>
+            </div>
+          </Link>
         ))}
       </div>
     </section>
