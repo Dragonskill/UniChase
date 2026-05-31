@@ -1,24 +1,25 @@
 import { useParams, Link } from 'react-router-dom'
-import { news } from '@/data/news'
 import { motion } from 'framer-motion'
+import { useManagedNews } from '@/lib/contentHooks'
 
 export default function NewsDetail() {
   const { id } = useParams()
+  const news = useManagedNews()
   const article = news.find((a) => a.id === Number(id))
 
   if (!article) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h1 className="text-2xl font-bold text-navy mb-4">Article not found</h1>
-        <Link to="/news" className="text-teal hover:underline">← Back to News</Link>
+        <Link to="/news" className="text-teal hover:underline">Back to News</Link>
       </div>
     )
   }
 
   return (
     <motion.article initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-3xl mx-auto px-5 sm:px-6 py-10">
-      <Link to="/news" className="text-sm text-teal hover:underline mb-8 inline-block">← Back to News</Link>
-      <p className="text-xs font-semibold uppercase tracking-widest text-teal mb-3">{article.category} · {article.readTime}</p>
+      <Link to="/news" className="text-sm text-teal hover:underline mb-8 inline-block">Back to News</Link>
+      <p className="text-xs font-semibold uppercase tracking-widest text-teal mb-3">{article.category} - {article.readTime}</p>
       <h1 className="text-3xl sm:text-4xl font-bold text-navy leading-tight mb-6">{article.title}</h1>
 
       <div className="flex items-center gap-3 pb-6 mb-8 border-b border-gray-100">
@@ -36,7 +37,7 @@ export default function NewsDetail() {
       </div>
 
       <div className="mt-12 pt-8 border-t border-gray-100">
-        <Link to="/news" className="text-sm text-teal hover:underline">← Back to all news</Link>
+        <Link to="/news" className="text-sm text-teal hover:underline">Back to all news</Link>
       </div>
     </motion.article>
   )

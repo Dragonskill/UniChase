@@ -17,6 +17,7 @@ import Compare from '../pages/Compare'
 import Match from '../pages/Match'
 import Dashboard from '../pages/Dashboard'
 import Contact from '../pages/Contact'
+import Moderator from '../pages/Moderator'
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: '/match',           element: <Match /> },
       { path: '/dashboard',       element: <Dashboard /> },
       { path: '/contact',         element: <Contact /> },
+      { path: '/moderator',       element: <Moderator /> },
       { path: '/reviews',         element: <ReviewList /> },
       { path: '/reviews/:id',     element: <ReviewDetail /> },
       { path: '/news',            element: <NewsList /> },

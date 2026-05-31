@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
-import { forumPosts } from '@/data/community'
+import { useManagedForumPosts } from '@/lib/contentHooks'
 
 export default function CommunitySection() {
+  const forumPosts = useManagedForumPosts()
+
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">COMMUNITY</h2>
-        <Link to="/community" className="text-sm text-muted hover:text-teal transition-colors">See all →</Link>
+        <Link to="/community" className="text-sm text-muted hover:text-teal transition-colors">See all</Link>
       </div>
 
       <div className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">

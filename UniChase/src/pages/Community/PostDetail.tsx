@@ -1,9 +1,11 @@
 import { useParams, Link } from 'react-router-dom'
-import { forumPosts, qaPosts } from '@/data/community'
 import { motion } from 'framer-motion'
+import { useManagedForumPosts, useManagedQaPosts } from '@/lib/contentHooks'
 
 export default function PostDetail() {
   const { id } = useParams()
+  const forumPosts = useManagedForumPosts()
+  const qaPosts = useManagedQaPosts()
   const isQA = id?.startsWith('qa-')
   const realId = isQA ? Number(id?.replace('qa-', '')) : Number(id)
   const forumPost = !isQA ? forumPosts.find((p) => p.id === realId) : null
@@ -14,19 +16,19 @@ export default function PostDetail() {
     return (
       <div className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h1 className="text-2xl font-bold text-navy mb-4">Post not found</h1>
-        <Link to="/community" className="text-teal hover:underline">← Back to Community</Link>
+        <Link to="/community" className="text-teal hover:underline">Back to Community</Link>
       </div>
     )
   }
 
   return (
     <motion.article initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-3xl mx-auto px-5 sm:px-6 py-10">
-      <Link to="/community" className="text-sm text-teal hover:underline mb-8 inline-block">← Back to Community</Link>
+      <Link to="/community" className="text-sm text-teal hover:underline mb-8 inline-block">Back to Community</Link>
 
       <div className="flex items-center gap-2 mb-4">
         {forumPost && <span className="text-xs bg-cream-dark text-ink px-3 py-1 rounded-full">{forumPost.tag}</span>}
         {qaPost && <span className="text-xs bg-teal/10 text-teal px-3 py-1 rounded-full">Question</span>}
-        {qaPost?.solved && <span className="text-xs bg-teal/10 text-teal px-3 py-1 rounded-full">✓ Solved</span>}
+        {qaPost?.solved && <span className="text-xs bg-teal/10 text-teal px-3 py-1 rounded-full">Solved</span>}
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-navy leading-tight mb-6">{post.title}</h1>
@@ -51,7 +53,7 @@ export default function PostDetail() {
             <button className="bg-teal hover:bg-teal-light text-white text-sm px-5 py-2 rounded-lg transition-colors font-medium">{forumPost ? 'Reply' : 'Answer'}</button>
           </div>
         </div>
-        <p className="text-sm text-muted text-center py-8">Be the first to {forumPost ? 'reply' : 'answer'}!</p>
+        <p className="text-sm text-muted text-center py-8">Be the first to {forumPost ? 'reply' : 'answer'}.</p>
       </div>
     </motion.article>
   )
