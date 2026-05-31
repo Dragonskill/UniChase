@@ -70,23 +70,22 @@ export default function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           {/* Search */}
-          <div className="hidden sm:flex items-center">
-            <div className={`overflow-hidden transition-all duration-300 ${searchOpen ? 'w-44 opacity-100' : 'w-0 opacity-0'}`}>
+          <div className="hidden sm:flex items-center gap-1">
+            <div className={`overflow-hidden transition-all duration-300 ${searchOpen ? 'w-48' : 'w-0'}`}>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    submitSearch()
-                  }
-                }}
-                placeholder={t('search')}
-                className="w-full bg-cream border border-gray-200 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+                placeholder="Search..."
+                className="w-full bg-cream border border-gray-200 rounded-full px-4 py-1.5 text-sm outline-none focus:border-teal transition-colors"
                 autoFocus={searchOpen}
               />
             </div>
-            <button onClick={submitSearch} className="p-2 text-muted hover:text-teal transition-colors" aria-label="Search">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="p-2 text-muted hover:text-teal transition-colors"
+              aria-label="Toggle search"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
