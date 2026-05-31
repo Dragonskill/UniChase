@@ -34,20 +34,7 @@ export default function Navbar() {
     }
   }, [])
 
-  const _submitSearch = () => {
-    const trimmed = query.trim()
 
-    if (!trimmed) {
-      setSearchOpen(!searchOpen)
-      return
-    }
-
-    addRecentSearch(trimmed)
-    navigate(`/university?search=${encodeURIComponent(trimmed)}`)
-    setQuery('')
-    setSearchOpen(false)
-    setMenuOpen(false)
-  }
 
   return (
     <nav className="w-full bg-surface/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
