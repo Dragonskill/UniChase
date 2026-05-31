@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useManagedNews } from '@/lib/contentHooks'
 
 export default function NewsDetail() {
@@ -20,7 +21,7 @@ export default function NewsDetail() {
     <motion.article initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-3xl mx-auto px-5 sm:px-6 py-10">
       <Link to="/news" className="text-sm text-teal hover:underline mb-8 inline-block">Back to News</Link>
       <p className="text-xs font-semibold uppercase tracking-widest text-teal mb-3">{article.category} - {article.readTime}</p>
-      <h1 className="text-3xl sm:text-4xl font-bold text-navy leading-tight mb-6">{article.title}</h1>
+      <GlowLetters as="h1" text={article.title} variant="title" className="text-3xl sm:text-4xl font-bold text-navy leading-tight mb-6" />
 
       <div className="flex items-center gap-3 pb-6 mb-8 border-b border-gray-100">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-teal flex items-center justify-center text-white font-bold">{article.author.charAt(0)}</div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LoginDropdown from './LoginDropdown'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useI18n, type Language } from '@/lib/i18n'
 import { authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
 
@@ -40,8 +41,9 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-4 flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/" className="text-xl font-bold text-navy">
-          Uni<span className="text-teal">Chase</span>
+        <Link to="/" className="text-xl font-bold text-navy" aria-label="UniChase home">
+          <GlowLetters text="Uni" variant="brand" />
+          <GlowLetters text="Chase" variant="brand" className="text-teal" />
         </Link>
 
         {/* Desktop links */}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useManagedNews } from '@/lib/contentHooks'
 
 export default function NewsSection() {
@@ -13,7 +14,7 @@ export default function NewsSection() {
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">NEWS</h2>
+        <GlowLetters as="h2" text="NEWS" variant="section" className="text-lg sm:text-xl font-bold tracking-wide text-navy" />
         <Link to="/news" className="text-sm text-muted hover:text-teal transition-colors">See all</Link>
       </div>
 
@@ -23,7 +24,7 @@ export default function NewsSection() {
           <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/30 to-transparent" />
           <div className="absolute bottom-5 left-5 sm:left-6 text-white max-w-2xl pr-5">
             <span className="text-xs font-semibold uppercase tracking-widest bg-teal px-3 py-1 rounded-full">{hero.category} - {hero.readTime}</span>
-            <h3 className="text-xl sm:text-2xl font-bold leading-snug mt-2">{hero.title}</h3>
+            <GlowLetters as="h3" text={hero.title} variant="hero" className="text-xl sm:text-2xl font-bold leading-snug mt-2" />
           </div>
         </div>
       </Link>

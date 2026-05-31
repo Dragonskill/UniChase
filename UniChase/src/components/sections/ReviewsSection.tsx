@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { reviews } from '@/data/reviews'
 
 export default function ReviewsSection() {
@@ -8,7 +9,7 @@ export default function ReviewsSection() {
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">REAL LIFE REVIEWS</h2>
+        <GlowLetters as="h2" text="REAL LIFE REVIEWS" variant="section" className="text-lg sm:text-xl font-bold tracking-wide text-navy" />
         <Link to="/reviews" className="text-sm text-muted hover:text-teal transition-colors">See all →</Link>
       </div>
 

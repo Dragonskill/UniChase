@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { getAuthErrorMessage, registerStudentAccount } from '@/lib/authSession'
 import { setStoredUser, setToken } from '@/lib/storage'
 
@@ -55,7 +56,7 @@ export default function SignUp() {
         transition={{ duration: 0.28, ease: 'easeOut' }}
         className="bg-surface p-8 rounded-2xl shadow-sm w-full max-w-md"
       >
-        <h1 className="text-2xl font-bold text-navy mb-1">Create account</h1>
+        <GlowLetters as="h1" text="Create account" variant="title" className="text-2xl font-bold text-navy mb-1" />
         <p className="text-muted mb-6">Join UniChase today</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">

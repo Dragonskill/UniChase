@@ -17,6 +17,77 @@ body {
   color: var(--color-ink);
 }
 
+@layer components {
+  .letter-glow {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    letter-spacing: 0;
+  }
+
+  :is(h1, h2, h3).letter-glow {
+    display: flex;
+  }
+
+  .glow-word {
+    display: inline-flex;
+    white-space: nowrap;
+  }
+
+  .glow-space {
+    width: 0.3em;
+    flex: 0 0 0.3em;
+  }
+
+  .glow-letter {
+    display: inline-block;
+    transform-origin: 50% 85%;
+    animation:
+      glow-letter-rise 580ms cubic-bezier(0.22, 1, 0.36, 1) both,
+      glow-letter-pulse 4.8s ease-in-out infinite;
+    animation-delay:
+      calc(var(--letter-index) * 34ms),
+      calc(680ms + var(--letter-index) * 58ms);
+  }
+
+  .letter-glow--brand {
+    color: var(--color-navy);
+    text-shadow: 0 0 0 rgba(14, 148, 136, 0);
+  }
+
+  .letter-glow--brand .glow-word:nth-child(3) {
+    color: var(--color-teal);
+  }
+
+  .letter-glow--hero {
+    color: #fff;
+    text-shadow:
+      0 2px 18px rgba(0, 0, 0, 0.28),
+      0 0 24px rgba(20, 184, 166, 0.2);
+  }
+
+  .letter-glow--title,
+  .letter-glow--section {
+    color: var(--color-navy);
+  }
+
+  .letter-glow--section {
+    text-shadow: 0 0 18px rgba(14, 148, 136, 0.12);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    a:hover .letter-glow--brand .glow-letter,
+    .letter-glow:hover .glow-letter {
+      animation:
+        glow-letter-hover 520ms cubic-bezier(0.22, 1, 0.36, 1) both,
+        glow-letter-pulse 3.2s ease-in-out infinite;
+      animation-delay:
+        calc(var(--letter-index) * 20ms),
+        calc(460ms + var(--letter-index) * 48ms);
+    }
+  }
+}
+
 @layer base {
   :where(button, a[href]) {
     -webkit-tap-highlight-color: transparent;
@@ -77,5 +148,58 @@ body {
     :where(button, a[href]) {
       transform: none !important;
     }
+
+    .glow-letter {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+}
+
+@keyframes glow-letter-rise {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(0.45em) rotateX(55deg) scale(0.96);
+    text-shadow: 0 0 0 rgba(20, 184, 166, 0);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+    text-shadow: 0 0 18px rgba(20, 184, 166, 0.34);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) rotateX(0) scale(1);
+    text-shadow: 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+
+@keyframes glow-letter-pulse {
+  0%,
+  78%,
+  100% {
+    text-shadow: 0 0 0 rgba(20, 184, 166, 0);
+  }
+  40% {
+    text-shadow:
+      0 0 10px rgba(20, 184, 166, 0.24),
+      0 0 22px rgba(14, 148, 136, 0.16);
+  }
+}
+
+@keyframes glow-letter-hover {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  42% {
+    transform: translateY(-0.12em) scale(1.045);
+    text-shadow:
+      0 0 12px rgba(20, 184, 166, 0.35),
+      0 0 28px rgba(14, 148, 136, 0.2);
+  }
+  100% {
+    transform: translateY(0) scale(1);
   }
 }

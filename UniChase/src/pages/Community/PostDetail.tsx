@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useManagedForumPosts, useManagedQaPosts } from '@/lib/contentHooks'
 
 export default function PostDetail() {
@@ -31,7 +32,7 @@ export default function PostDetail() {
         {qaPost?.solved && <span className="text-xs bg-teal/10 text-teal px-3 py-1 rounded-full">Solved</span>}
       </div>
 
-      <h1 className="text-2xl sm:text-3xl font-bold text-navy leading-tight mb-6">{post.title}</h1>
+      <GlowLetters as="h1" text={post.title} variant="title" className="text-2xl sm:text-3xl font-bold text-navy leading-tight mb-6" />
 
       <div className="flex items-center gap-3 pb-6 mb-8 border-b border-gray-100">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-navy to-teal flex items-center justify-center text-white font-bold">{post.author.charAt(0)}</div>

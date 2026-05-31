@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useI18n } from '@/lib/i18n'
 
 export default function Footer() {
@@ -9,7 +10,10 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <div>
-            <Link to="/" className="text-xl font-bold text-white">Uni<span className="text-teal">Chase</span></Link>
+            <Link to="/" className="text-xl font-bold text-white" aria-label="UniChase home">
+              <GlowLetters text="Uni" variant="brand" className="text-white" />
+              <GlowLetters text="Chase" variant="brand" className="text-teal" />
+            </Link>
             <p className="text-sm text-gray-400 mt-3 max-w-xs">Helping international students navigate study, careers and life in Korea.</p>
           </div>
           <div className="flex gap-12">

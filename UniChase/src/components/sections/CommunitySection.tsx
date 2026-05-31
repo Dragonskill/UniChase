@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useManagedForumPosts } from '@/lib/contentHooks'
 
 export default function CommunitySection() {
@@ -7,7 +8,7 @@ export default function CommunitySection() {
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">COMMUNITY</h2>
+        <GlowLetters as="h2" text="COMMUNITY" variant="section" className="text-lg sm:text-xl font-bold tracking-wide text-navy" />
         <Link to="/community" className="text-sm text-muted hover:text-teal transition-colors">See all</Link>
       </div>
 

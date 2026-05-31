@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { slides } from '@/data/carousel'
+import GlowLetters from '@/components/ui/GlowLetters'
 
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0)
@@ -41,9 +42,12 @@ export default function HeroCarousel() {
             <span className="text-xs font-semibold tracking-widest uppercase bg-teal px-3 py-1 rounded-full mb-3 inline-block">
               {slides[current].category}
             </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mt-3 mb-5">
-              {slides[current].title}
-            </h2>
+            <GlowLetters
+              as="h2"
+              text={slides[current].title}
+              variant="hero"
+              className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mt-3 mb-5"
+            />
             <Link to={slides[current].link} className="bg-white text-navy px-6 py-2.5 rounded-xl font-semibold hover:bg-cream transition-colors shadow-lg inline-block">
               Read More
             </Link>

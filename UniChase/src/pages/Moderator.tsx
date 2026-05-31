@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Loader2, LogOut, RotateCcw, Save, Trash2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
+import GlowLetters from '@/components/ui/GlowLetters'
 import type { ForumPost, QAPost } from '@/data/community'
 import type { NewsArticle } from '@/data/news'
 import {
@@ -128,7 +129,7 @@ function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
   return (
     <div className="min-h-[78vh] flex items-center justify-center px-5 py-10">
       <section className="bg-surface rounded-2xl shadow-sm w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-navy mb-1">{isClaimMode ? 'Create moderator access' : 'Moderator login'}</h1>
+        <GlowLetters as="h1" text={isClaimMode ? 'Create moderator access' : 'Moderator login'} variant="title" className="text-2xl font-bold text-navy mb-1" />
         <p className="text-sm text-muted mb-6">
           {isClaimMode ? 'Set up your private moderator account on this browser.' : 'Login to update UniChase content.'}
         </p>
@@ -223,7 +224,7 @@ export default function Moderator() {
       <header className="flex items-start justify-between gap-4 mb-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-teal mb-2">Moderator</p>
-          <h1 className="text-3xl font-bold text-navy">Content Manager</h1>
+          <GlowLetters as="h1" text="Content Manager" variant="title" className="text-3xl font-bold text-navy" />
           <p className="text-sm text-muted mt-2">Signed in as {session.name} - {session.email}</p>
         </div>
         <button onClick={signOut} className="text-sm text-muted hover:text-teal transition-colors flex items-center gap-2">

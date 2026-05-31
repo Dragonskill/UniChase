@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { careers } from '@/data/careers'
 
 export default function CareersSection() {
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg sm:text-xl font-bold tracking-wide text-navy">CAREERS</h2>
+        <GlowLetters as="h2" text="CAREERS" variant="section" className="text-lg sm:text-xl font-bold tracking-wide text-navy" />
         <Link to="/careers" className="text-sm text-muted hover:text-teal transition-colors">See all →</Link>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import GlowLetters from '@/components/ui/GlowLetters'
 import { useManagedForumPosts, useManagedMembers, useManagedQaPosts } from '@/lib/contentHooks'
 
 export default function Forum() {
@@ -11,7 +12,7 @@ export default function Forum() {
 
   return (
     <div className="max-w-4xl mx-auto px-5 sm:px-6 py-10">
-      <h1 className="text-3xl font-bold text-navy mb-2">Community</h1>
+      <GlowLetters as="h1" text="Community" variant="title" className="text-3xl font-bold text-navy mb-2" />
       <p className="text-muted mb-8">Connect, share, and ask the UniChase community</p>
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
