@@ -80,7 +80,10 @@ async function hashLocalPassword(email: string, password: string) {
 }
 
 function shouldUseLocalFallback(error: unknown) {
-  return error instanceof ApiRequestError && error.isNetworkError
+  return (
+    error instanceof ApiRequestError &&
+    (error.isNetworkError || error.status === 404 || error.status === 405 || Boolean(error.status && error.status >= 500))
+  )
 }
 
 async function registerLocalStudent(data: { name: string; email: string; password: string }): Promise<AuthResult> {

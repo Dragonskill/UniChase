@@ -9,6 +9,7 @@ type UniversityDetailResponse = {
 }
 
 const fallbackApiBaseUrl = "http://localhost:3001/api"
+const requestTimeoutMs = 8000
 
 function getApiBaseUrl() {
   return (import.meta.env.VITE_API_BASE_URL || fallbackApiBaseUrl).replace(/\/$/, "")
@@ -33,6 +34,8 @@ export class ApiRequestError extends Error {
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
+  const controller = new AbortController()
+  const timeout = globalThis.setTimeout(() => controller.abort(), requestTimeoutMs)
 
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
@@ -44,9 +47,12 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...options,
       headers,
+      signal: options.signal || controller.signal,
     })
   } catch {
     throw new ApiRequestError("Could not connect to the UniChase API.", { isNetworkError: true })
+  } finally {
+    globalThis.clearTimeout(timeout)
   }
 
   if (!response.ok) {
