@@ -185,12 +185,12 @@ export const universityQuerySchema = z
 
 export const userRegisterSchema = z.object({
   name: cleanString(120),
-  email: z.string().trim().email().max(200),
+  email: z.string().trim().email().max(200).transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(200),
 })
 
 export const userLoginSchema = z.object({
-  email: z.string().trim().email().max(200),
+  email: z.string().trim().email().max(200).transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(200),
 })
 

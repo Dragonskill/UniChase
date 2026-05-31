@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { loginStudent } from '@/lib/api'
+import { getAuthErrorMessage, loginStudentAccount } from '@/lib/authSession'
 import { setStoredUser, setToken } from '@/lib/storage'
 
 const loginSchema = z.object({
@@ -15,6 +16,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function Login() {
   const navigate = useNavigate()
+  const [formError, setFormError] = useState('')
   const {
     register,
     handleSubmit,
@@ -22,10 +24,16 @@ export default function Login() {
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
   const onSubmit = async (data: LoginForm) => {
-    const response = await loginStudent(data)
-    setToken(response.data.token)
-    setStoredUser(response.data.user)
-    navigate('/dashboard')
+    setFormError('')
+
+    try {
+      const response = await loginStudentAccount(data)
+      setToken(response.token)
+      setStoredUser(response.user)
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setFormError(getAuthErrorMessage(error))
+    }
   }
 
   return (
@@ -45,6 +53,7 @@ export default function Login() {
             <input
               {...register('email')}
               type="email"
+              autoComplete="email"
               placeholder="you@example.com"
               className="mt-1 w-full bg-cream border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
             />
@@ -56,11 +65,14 @@ export default function Login() {
             <input
               {...register('password')}
               type="password"
-              placeholder="••••••••"
+              autoComplete="current-password"
+              placeholder="Password"
               className="mt-1 w-full bg-cream border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
             />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
+
+          {formError && <p className="text-red-500 text-sm" role="alert">{formError}</p>}
 
           <button
             type="submit"

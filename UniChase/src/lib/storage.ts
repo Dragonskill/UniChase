@@ -6,6 +6,14 @@ const tokenKey = "unichase.studentToken"
 const userKey = "unichase.studentUser"
 const languageKey = "unichase.language"
 
+export const authChangeEvent = "unichase:auth-change"
+
+function notifyAuthChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(authChangeEvent))
+  }
+}
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key)
@@ -86,11 +94,13 @@ export function getToken() {
 
 export function setToken(token: string) {
   localStorage.setItem(tokenKey, token)
+  notifyAuthChange()
 }
 
 export function clearToken() {
   localStorage.removeItem(tokenKey)
   localStorage.removeItem(userKey)
+  notifyAuthChange()
 }
 
 export function getStoredUser<T>() {
@@ -99,6 +109,7 @@ export function getStoredUser<T>() {
 
 export function setStoredUser(user: unknown) {
   writeJson(userKey, user)
+  notifyAuthChange()
 }
 
 export function getStoredLanguage() {

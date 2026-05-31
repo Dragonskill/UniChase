@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoginDropdown from './LoginDropdown'
 import { useI18n, type Language } from '@/lib/i18n'
-import { addRecentSearch } from '@/lib/storage'
+import { addRecentSearch, authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
 
 const links = [
   { to: '/university', labelKey: 'university' },
@@ -19,6 +19,20 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [signedIn, setSignedIn] = useState(() => Boolean(getToken() && getStoredUser()))
+
+  useEffect(() => {
+    function syncAuth() {
+      setSignedIn(Boolean(getToken() && getStoredUser()))
+    }
+
+    window.addEventListener(authChangeEvent, syncAuth)
+    window.addEventListener('storage', syncAuth)
+    return () => {
+      window.removeEventListener(authChangeEvent, syncAuth)
+      window.removeEventListener('storage', syncAuth)
+    }
+  }, [])
 
   const submitSearch = () => {
     const trimmed = query.trim()
@@ -94,7 +108,7 @@ export default function Navbar() {
           {/* Auth - desktop */}
           <div className="hidden md:block"><LoginDropdown /></div>
           <Link to="/dashboard" className="hidden lg:inline text-sm font-medium text-muted hover:text-teal transition-colors">{t('dashboard')}</Link>
-          <Link to="/signup" className="hidden md:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>
+          {!signedIn && <Link to="/signup" className="hidden md:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>}
 
           {/* Hamburger - mobile */}
           <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-navy" aria-label="Menu">
@@ -127,10 +141,12 @@ export default function Navbar() {
             <option value="ru">RU</option>
             <option value="uz">UZ</option>
           </select>
-          <div className="flex gap-3 pt-3 border-t border-gray-100">
-            <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-full">{t('login')}</Link>
-            <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-semibold py-2 bg-navy text-white rounded-full">{t('signup')}</Link>
-          </div>
+          {!signedIn && (
+            <div className="flex gap-3 pt-3 border-t border-gray-100">
+              <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-full">{t('login')}</Link>
+              <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-semibold py-2 bg-navy text-white rounded-full">{t('signup')}</Link>
+            </div>
+          )}
         </div>
       )}
     </nav>

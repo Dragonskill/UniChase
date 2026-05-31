@@ -14,6 +14,23 @@ function getApiBaseUrl() {
   return (import.meta.env.VITE_API_BASE_URL || fallbackApiBaseUrl).replace(/\/$/, "")
 }
 
+export class ApiRequestError extends Error {
+  status?: number
+  details?: unknown
+  isNetworkError: boolean
+
+  constructor(
+    message: string,
+    options: { status?: number; details?: unknown; isNetworkError?: boolean } = {},
+  ) {
+    super(message)
+    this.name = "ApiRequestError"
+    this.status = options.status
+    this.details = options.details
+    this.isNetworkError = Boolean(options.isNetworkError)
+  }
+}
+
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
 
@@ -21,14 +38,23 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     headers.set("Content-Type", "application/json")
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...options,
-    headers,
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...options,
+      headers,
+    })
+  } catch {
+    throw new ApiRequestError("Could not connect to the UniChase API.", { isNetworkError: true })
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(body?.error?.message || `API request failed with status ${response.status}`)
+    throw new ApiRequestError(body?.error?.message || `API request failed with status ${response.status}`, {
+      status: response.status,
+      details: body?.error?.details,
+    })
   }
 
   return response.json() as Promise<T>

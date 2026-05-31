@@ -11,6 +11,7 @@ import {
   updateProfile,
   type StudentUser,
 } from "@/lib/api"
+import { getLocalSessionUser, isLocalAuthToken, updateLocalSessionUser } from "@/lib/authSession"
 import { applySeo } from "@/lib/seo"
 import {
   clearToken,
@@ -63,6 +64,23 @@ export default function Dashboard() {
     }
 
     if (!token) {
+      return
+    }
+
+    if (isLocalAuthToken(token)) {
+      Promise.resolve().then(() => {
+        const localUser = getLocalSessionUser(token)
+
+        if (localUser) {
+          setProfile(localUser)
+          setStoredUser(localUser)
+        } else {
+          clearToken()
+          setTokenState(null)
+          setProfile(null)
+        }
+      })
+
       return
     }
 
@@ -119,6 +137,20 @@ export default function Dashboard() {
 
   const saveProfile = () => {
     if (!token || !profile) {
+      return
+    }
+
+    if (isLocalAuthToken(token)) {
+      const user = updateLocalSessionUser(token, profile)
+
+      if (user) {
+        setProfile(user)
+        setStoredUser(user)
+        setProfileMessage("Profile saved.")
+      } else {
+        setProfileMessage("Could not save profile.")
+      }
+
       return
     }
 
