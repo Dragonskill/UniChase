@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import LoginDropdown from './LoginDropdown'
 import { useI18n, type Language } from '@/lib/i18n'
-import { addRecentSearch, authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
+import { authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
 
 const links = [
   { to: '/university', labelKey: 'university' },
@@ -14,7 +14,6 @@ const links = [
 ] as const
 
 export default function Navbar() {
-  const navigate = useNavigate()
   const { language, setLanguage, t } = useI18n()
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
