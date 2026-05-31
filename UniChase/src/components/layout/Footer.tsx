@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useI18n } from '@/lib/i18n'
 
 export default function Footer() {
+  const { t } = useI18n()
+
   return (
     <footer className="mt-20 bg-navy text-white">
       <div className="max-w-6xl mx-auto px-6 py-12">
@@ -12,7 +15,7 @@ export default function Footer() {
           <div className="flex gap-12">
             <div className="flex flex-col gap-2">
               <Link to="/" className="text-sm text-gray-300 hover:text-teal">About</Link>
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">Contact</Link>
+              <Link to="/contact" className="text-sm text-gray-300 hover:text-teal">{t('contact')}</Link>
               <Link to="/" className="text-sm text-gray-300 hover:text-teal">Advertising</Link>
             </div>
             <div className="flex flex-col gap-2">

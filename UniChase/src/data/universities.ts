@@ -1,13 +1,57 @@
 export type University = {
   id: number
   name: string
+  slug?: string | null
+  koreanName?: string | null
   location: string
+  city?: string
+  country?: string
+  universityType?: "public" | "private"
   image: string
+  imageUrl?: string
   logo: string
+  logoUrl?: string
   description: string
   mainColor: string
   acceptanceRate?: string
   qsRanking?: string
+  qsRankingNumber?: number | null
+  qsRankingYear?: number | null
+  rankingSourceNote?: string | null
+  officialWebsite?: string
+  programs?: string[]
+  tuition?: {
+    min?: number | null
+    max?: number | null
+    currency?: string
+  }
+  admissionRequirements?: string[]
+  languageOfInstruction?: string[]
+  scholarshipInfo?: string | null
+  hasScholarships?: boolean
+  hasDormitory?: boolean
+  dormitoryHousingInfo?: string | null
+  internationalStudentInfo?: string | null
+  studentLife?: string | null
+  requiredDocuments?: string[]
+  applicationSteps?: string[]
+  studyLevels?: string[]
+  applicationDeadlines?: Record<string, unknown> | null
+  deadlines?: {
+    applicationOpenDate?: string | null
+    applicationDeadline?: string | null
+    scholarshipDeadline?: string | null
+    documentDeadline?: string | null
+    status?: string
+  }
+  tags?: string[]
+  contact?: {
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+  }
+  createdAt?: string
+  updatedAt?: string
 }
 
 export const universities: University[] = [

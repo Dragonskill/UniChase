@@ -13,6 +13,10 @@ import Forum from '../pages/Community/Forum'
 import PostDetail from '../pages/Community/PostDetail'
 import Login from '../pages/auth/Login'
 import SignUp from '../pages/auth/SignUp'
+import Compare from '../pages/Compare'
+import Match from '../pages/Match'
+import Dashboard from '../pages/Dashboard'
+import Contact from '../pages/Contact'
 
 const router = createBrowserRouter([
   {
@@ -22,6 +26,11 @@ const router = createBrowserRouter([
       { path: '/',                element: <Home /> },
       { path: '/university',      element: <UniversityList /> },
       { path: '/university/:id',  element: <UniversityDetail /> },
+      { path: '/universities/:idOrSlug', element: <UniversityDetail /> },
+      { path: '/compare',         element: <Compare /> },
+      { path: '/match',           element: <Match /> },
+      { path: '/dashboard',       element: <Dashboard /> },
+      { path: '/contact',         element: <Contact /> },
       { path: '/reviews',         element: <ReviewList /> },
       { path: '/reviews/:id',     element: <ReviewDetail /> },
       { path: '/news',            element: <NewsList /> },

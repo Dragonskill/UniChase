@@ -3,12 +3,24 @@ import type { University } from "@/data/universities"
 
 type Props = {
   uni: University
+  isSaved?: boolean
+  isCompared?: boolean
+  compareDisabled?: boolean
+  onToggleSaved?: (id: number) => void
+  onToggleCompare?: (id: number) => void
 }
 
-function UniversityCard({ uni }: Props) {
+function UniversityCard({
+  uni,
+  isSaved = false,
+  isCompared = false,
+  compareDisabled = false,
+  onToggleSaved,
+  onToggleCompare,
+}: Props) {
   return (
     <Link
-      to={`/university/${uni.id}`}
+      to={`/universities/${uni.slug || uni.id}`}
       className="block group rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:shadow-lg hover:-translate-y-1"
     >
       {/* Banner image + Follow button */}
@@ -19,10 +31,13 @@ function UniversityCard({ uni }: Props) {
           className="h-44 w-full object-cover"
         />
         <button
-          onClick={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault()
+            onToggleSaved?.(uni.id)
+          }}
           className="absolute top-3 right-3 cursor-pointer bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-white"
         >
-          + Follow
+          {isSaved ? "Saved" : "+ Follow"}
         </button>
       </div>
 
@@ -69,6 +84,25 @@ function UniversityCard({ uni }: Props) {
         <p className="mt-4 text-sm text-gray-600 line-clamp-3">
           {uni.description}
         </p>
+
+        {onToggleCompare && (
+          <label
+            onClick={(e) => e.stopPropagation()}
+            className="mt-4 flex items-center gap-2 text-sm text-gray-700"
+          >
+            <input
+              type="checkbox"
+              checked={isCompared}
+              disabled={!isCompared && compareDisabled}
+              onChange={(e) => {
+                e.preventDefault()
+                onToggleCompare(uni.id)
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-teal focus:ring-teal"
+            />
+            Compare
+          </label>
+        )}
       </div>
     </Link>
   )

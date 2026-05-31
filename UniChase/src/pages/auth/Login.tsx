@@ -1,25 +1,31 @@
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { loginStudent } from '@/lib/api'
+import { setStoredUser, setToken } from '@/lib/storage'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function Login() {
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
-  const onSubmit = (data: LoginForm) => {
-    console.log(data)
+  const onSubmit = async (data: LoginForm) => {
+    const response = await loginStudent(data)
+    setToken(response.data.token)
+    setStoredUser(response.data.user)
+    navigate('/dashboard')
   }
 
   return (

@@ -16,3 +16,66 @@ body {
   background-color: var(--color-cream);
   color: var(--color-ink);
 }
+
+@layer base {
+  :where(button, a[href]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :where(button):not(:disabled),
+  :where(a[href]) {
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  :where(button):not(:disabled) {
+    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  }
+
+  :where(a[href]) {
+    transition-property: color, background-color, border-color, opacity, text-decoration-color, box-shadow, transform;
+  }
+
+  :where(a[href][class*="shadow"]):not([class*="-translate-y"]) {
+    will-change: transform;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :where(button):not(:disabled):hover {
+      transform: translateY(-1px) scale(1.01);
+    }
+
+    :where(a[href][class*="shadow"]):not([class*="-translate-y"]):hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  :where(button):not(:disabled):active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 90ms;
+  }
+
+  :where(a[href]):active {
+    opacity: 0.92;
+    transition-duration: 90ms;
+  }
+
+  :where(a[href][class*="shadow"]):active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    :where(button, a[href]) {
+      transform: none !important;
+    }
+  }
+}

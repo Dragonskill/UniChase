@@ -1,13 +1,15 @@
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { registerStudent } from '@/lib/api'
+import { setStoredUser, setToken } from '@/lib/storage'
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -17,14 +19,22 @@ const signupSchema = z.object({
 type SignupForm = z.infer<typeof signupSchema>
 
 export default function SignUp() {
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SignupForm>({ resolver: zodResolver(signupSchema) })
 
-  const onSubmit = (data: SignupForm) => {
-    console.log(data)
+  const onSubmit = async (data: SignupForm) => {
+    const response = await registerStudent({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    })
+    setToken(response.data.token)
+    setStoredUser(response.data.user)
+    navigate('/dashboard')
   }
 
   return (

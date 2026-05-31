@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model University {
+  id                       Int      @id @default(autoincrement())
+  name                     String   @unique
+  slug                     String?  @unique
+  koreanName               String?
+  city                     String
+  country                  String   @default("South Korea")
+  universityType           String   @default("private")
+  qsRanking                Int?
+  qsRankingYear            Int?
+  rankingSourceNote        String?  @db.Text
+  officialWebsite          String   @unique
+  imageUrl                 String
+  logoUrl                  String
+  description              String   @db.Text
+  programs                 String[] @default([])
+  tuitionMin               Int?
+  tuitionMax               Int?
+  tuitionCurrency          String   @default("KRW")
+  admissionRequirements    String[] @default([])
+  languagesOfInstruction   String[] @default([])
+  scholarshipInfo          String?  @db.Text
+  hasScholarships          Boolean  @default(false)
+  hasDormitory             Boolean  @default(false)
+  housingInfo              String?  @db.Text
+  internationalStudentInfo String?  @db.Text
+  studentLife              String?  @db.Text
+  requiredDocuments        String[] @default([])
+  applicationSteps         String[] @default([])
+  studyLevels              String[] @default([])
+  applicationDeadlines     Json?
+  applicationOpenDate      DateTime?
+  applicationDeadline      DateTime?
+  scholarshipDeadline      DateTime?
+  documentDeadline         DateTime?
+  tags                     String[] @default([])
+  contactEmail             String?
+  contactPhone             String?
+  contactAddress           String?
+  mainColor                String   @default("#15397F")
+  acceptanceRate           String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  savedBy                  SavedUniversity[]
+  comparisonItems          ComparisonUniversity[]
+  deadlineReminders        UserDeadline[]
+
+  @@index([city])
+  @@index([country])
+  @@index([universityType])
+  @@index([qsRanking])
+  @@index([applicationDeadline])
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudentUser {
+  id                        Int                        @id @default(autoincrement())
+  name                      String
+  email                     String                     @unique
+  passwordHash              String
+  preferredMajor            String?
+  preferredCity             String?
+  preferredLevel            String?
+  budgetMin                 Int?
+  budgetMax                 Int?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  savedUniversities         SavedUniversity[]
+  comparisonSets            ComparisonSet[]
+  deadlineReminders         UserDeadline[]
+  checklistItems            ChecklistItem[]
+  recommendationPreferences RecommendationPreference[]
+}
+
+model SavedUniversity {
+  userId       Int
+  universityId Int
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
+
+  user         StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university   University  @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, universityId])
+  @@index([universityId])
+}
+
+model ComparisonSet {
+  id        Int                    @id @default(autoincrement())
+  userId    Int?
+  name      String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  user      StudentUser?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ComparisonUniversity[]
+}
+
+model ComparisonUniversity {
+  id              Int           @id @default(autoincrement())
+  comparisonSetId Int
+  universityId    Int
+  createdAt       DateTime      @default(now())
+
+  comparisonSet   ComparisonSet @relation(fields: [comparisonSetId], references: [id], onDelete: Cascade)
+  university      University    @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@unique([comparisonSetId, universityId])
+  @@index([universityId])
+}
+
+model UserDeadline {
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  universityId Int
+  deadlineType String
+  important    Boolean     @default(false)
+  note         String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university   University  @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, universityId, deadlineType])
+  @@index([universityId])
+}
+
+model ChecklistItem {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  title     String
+  completed Boolean     @default(false)
+  dueDate   DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecommendationPreference {
+  id                     Int          @id @default(autoincrement())
+  userId                 Int?
+  preferredMajor         String?
+  preferredCity          String?
+  language               String?
+  dormitoryRequired      Boolean?
+  scholarshipPreferred   Boolean?
+  level                  String?
+  rankingMin             Int?
+  rankingMax             Int?
+  tuitionMin             Int?
+  tuitionMax             Int?
+  results                Json?
+  createdAt              DateTime     @default(now())
+
+  user                   StudentUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model ContactMessage {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  email                String
+  universityOfInterest String?
+  subject              String
+  message              String   @db.Text
+  status               String   @default("new")
+  createdAt            DateTime @default(now())
+}
