@@ -91,6 +91,31 @@ function enrichUniversity(university, index) {
   }
 }
 
+function buildProgramsForUniversity(university) {
+  return university.programs.map((programName) => ({
+    slug: slugify(`${university.name}-${programName}`),
+    name: programName,
+    degreeLevel: university.studyLevels?.join(" / ") || "undergraduate / graduate",
+    languageOfInstruction: university.languagesOfInstruction?.join(" / ") || "Korean / English",
+    tuitionMin: university.tuitionMin,
+    tuitionMax: university.tuitionMax,
+    tuitionCurrency: university.tuitionCurrency,
+    duration: "4 years for undergraduate, 2+ years for graduate programs",
+    requirements: university.admissionRequirements,
+    requiredDocuments: university.requiredDocuments,
+    applicationPeriod:
+      university.applicationDeadlines?.fall ||
+      university.applicationDeadlines?.spring ||
+      "Check the official admission guide for the current cycle",
+    careerOutcomes: [
+      "Graduate study",
+      "Industry roles connected to the major",
+      "Research or internship opportunities",
+    ],
+    officialLink: university.officialWebsite,
+  }))
+}
+
 const universities = [
   {
     name: "Seoul National University",
@@ -467,11 +492,19 @@ async function main() {
   for (const [index, university] of universities.entries()) {
     const preparedUniversity = enrichUniversity(university, index)
 
-    await prisma.university.upsert({
+    const savedUniversity = await prisma.university.upsert({
       where: { name: preparedUniversity.name },
       update: preparedUniversity,
       create: preparedUniversity,
     })
+
+    for (const program of buildProgramsForUniversity(preparedUniversity)) {
+      await prisma.program.upsert({
+        where: { slug: program.slug },
+        update: { ...program, universityId: savedUniversity.id },
+        create: { ...program, universityId: savedUniversity.id },
+      })
+    }
   }
 
   await seedAdminUser()

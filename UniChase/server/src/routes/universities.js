@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { ApiError, asyncHandler } from "../errors.js"
 import { mapUniversityForClient } from "../mappers/universityMapper.js"
+import { mapProgram } from "./programs.js"
 import {
   buildUniversityWhere,
   filterUniversitiesInMemory,
@@ -84,6 +85,28 @@ export function createUniversityRouter(prisma) {
           reasons: item.reasons,
         })),
       })
+    }),
+  )
+
+  router.get(
+    "/:idOrSlug/programs",
+    asyncHandler(async (req, res) => {
+      const identifier = req.params.idOrSlug
+      const university = /^\d+$/.test(identifier)
+        ? await prisma.university.findUnique({
+            where: { id: parsePositiveId(identifier) },
+            include: { degreePrograms: { orderBy: { name: "asc" } } },
+          })
+        : await prisma.university.findUnique({
+            where: { slug: identifier },
+            include: { degreePrograms: { orderBy: { name: "asc" } } },
+          })
+
+      if (!university) {
+        throw new ApiError(404, "University not found")
+      }
+
+      res.json({ data: university.degreePrograms.map((program) => mapProgram({ ...program, university })) })
     }),
   )
 

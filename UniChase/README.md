@@ -19,6 +19,7 @@ The public visual design is intentionally preserved. New functionality reuses th
 - SEO metadata, Open Graph/Twitter tags, canonical URLs, structured data, `sitemap.xml`, and `robots.txt`
 - Interface language switcher for English, Korean, Russian, and Uzbek labels
 - Contact/support form stored in the database
+- Student tools: program finder, application roadmap builder, document checklist generator, essay helper, visa checklist, cost calculator, eligibility checker, FAQ center, review submission, reminder preferences, and PDF exports
 
 Excluded by design:
 
@@ -51,6 +52,7 @@ VITE_API_BASE_URL="http://localhost:3001/api"
 ```
 
 Email sending is not configured. Contact messages are stored in `ContactMessage`; add an email provider later if notifications are needed.
+Reminder preferences and scheduled reminder records are stored in the database. SMTP variables are reserved for a future sender job and can stay empty while `EMAIL_REMINDERS_ENABLED` is false.
 
 ## Local Setup
 
@@ -92,6 +94,18 @@ Main models:
 - `ChecklistItem`
 - `RecommendationPreference`
 - `ContactMessage`
+- `Program`
+- `ApplicationRoadmap`
+- `RoadmapStep`
+- `DocumentChecklist`
+- `DocumentChecklistItem`
+- `EssayDraft`
+- `VisaChecklistItem`
+- `CostEstimate`
+- `EligibilityResult`
+- `UniversityReview`
+- `ReminderPreference`
+- `ScheduledReminder`
 
 Useful commands:
 
@@ -115,6 +129,11 @@ Public:
 - `GET /api/universities/filter`
 - `GET /api/universities/compare?ids=1,2`
 - `POST /api/universities/recommendations`
+- `GET /api/universities/:idOrSlug/programs`
+- `GET /api/programs`
+- `GET /api/programs/search`
+- `GET /api/programs/:slug`
+- `GET /api/reviews/universities/:universityId`
 - `POST /api/contact`
 
 University query parameters:
@@ -149,6 +168,42 @@ Student dashboard:
 - `POST /api/user/deadlines`
 - `GET /api/user/checklist`
 - `PATCH /api/user/checklist`
+
+Student tools:
+
+- `GET /api/student-tools/roadmaps`
+- `POST /api/student-tools/roadmaps`
+- `GET /api/student-tools/roadmaps/:id`
+- `PATCH /api/student-tools/roadmaps/:id`
+- `DELETE /api/student-tools/roadmaps/:id`
+- `POST /api/student-tools/roadmaps/:id/steps`
+- `PATCH /api/student-tools/roadmap-steps/:stepId`
+- `DELETE /api/student-tools/roadmap-steps/:stepId`
+- `GET /api/student-tools/document-checklists`
+- `POST /api/student-tools/document-checklists`
+- `POST /api/student-tools/document-checklists/:id/items`
+- `PATCH /api/student-tools/document-checklist-items/:itemId`
+- `DELETE /api/student-tools/document-checklist-items/:itemId`
+- `GET /api/student-tools/essay-drafts`
+- `POST /api/student-tools/essay-drafts`
+- `PATCH /api/student-tools/essay-drafts/:id`
+- `DELETE /api/student-tools/essay-drafts/:id`
+- `POST /api/student-tools/essay-feedback`
+- `GET /api/student-tools/visa-checklist`
+- `PATCH /api/student-tools/visa-checklist`
+- `PATCH /api/student-tools/visa-checklist/:id`
+- `GET /api/student-tools/cost-estimates`
+- `POST /api/student-tools/cost-estimates`
+- `DELETE /api/student-tools/cost-estimates/:id`
+- `GET /api/student-tools/eligibility-results`
+- `POST /api/student-tools/eligibility-checks`
+- `GET /api/student-tools/reminder-preferences`
+- `PUT /api/student-tools/reminder-preferences`
+- `GET /api/student-tools/scheduled-reminders`
+- `POST /api/reviews/universities/:universityId`
+- `GET /api/reviews/me`
+- `PATCH /api/reviews/:id`
+- `DELETE /api/reviews/:id`
 
 Admin:
 
@@ -217,6 +272,8 @@ Manual checks used during development:
 - Recommendation form and scored results
 - Expanded university detail pages
 - Contact form storage
+- Student tool pages and PDF export
+- Program pages and university review submission
 - Language switcher
 - Mobile layout
 - Backend health and all new API endpoint categories

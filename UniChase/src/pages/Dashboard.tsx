@@ -167,6 +167,18 @@ export default function Dashboard() {
     setProfile(null)
   }
 
+  const studentTools = [
+    { to: "/programs", label: "Program finder", detail: "Browse program-level pages." },
+    { to: "/roadmap", label: "Application roadmap", detail: "Plan application steps." },
+    { to: "/documents", label: "Document checklist", detail: "Generate required documents." },
+    { to: "/essay-helper", label: "Essay helper", detail: "Review study-plan drafts." },
+    { to: "/visa-guide", label: "Visa guide", detail: "Track student visa tasks." },
+    { to: "/cost-calculator", label: "Cost calculator", detail: "Estimate first-year costs." },
+    { to: "/eligibility", label: "Eligibility checker", detail: "Check readiness gaps." },
+    { to: "/reminders", label: "Email reminders", detail: "Manage reminder preferences." },
+    { to: "/faq", label: "FAQ center", detail: "Find application answers." },
+  ]
+
   return (
     <div className="page-fade max-w-6xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between gap-4 mb-6">
@@ -177,6 +189,18 @@ export default function Dashboard() {
           <Link to="/login" className="text-sm text-teal hover:underline">Login to sync dashboard</Link>
         )}
       </div>
+
+      <section className="bg-surface rounded-2xl shadow-sm p-5 mb-6">
+        <h2 className="text-lg font-bold text-navy mb-3">Student Tools</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {studentTools.map((tool) => (
+            <Link key={tool.to} to={tool.to} className="border border-gray-200 rounded-lg p-3 hover:border-teal transition-colors">
+              <span className="block text-sm font-semibold text-navy">{tool.label}</span>
+              <span className="block mt-1 text-xs text-muted">{tool.detail}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="bg-surface rounded-2xl shadow-sm p-5">

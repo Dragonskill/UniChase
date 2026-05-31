@@ -2,9 +2,19 @@ import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
 import { universities, type University } from "@/data/universities"
-import { fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
+import {
+  fetchUniversity,
+  fetchUniversityPrograms,
+  fetchUniversityReviews,
+  saveDeadlineToAccount,
+  submitUniversityReview,
+  type Program,
+  type UniversityReview,
+} from "@/lib/api"
+import { isLocalAuthToken } from "@/lib/authSession"
 import { applySeo } from "@/lib/seo"
 import { getToken, saveLocalDeadline } from "@/lib/storage"
+import { getLocalReviews, saveLocalReview } from "@/lib/studentToolsLocal"
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -30,6 +40,21 @@ function UniversityDetail() {
     ? universities.find((u) => u.id === numericId)
     : undefined
   const [loadedUni, setLoadedUni] = useState<University>()
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [reviews, setReviews] = useState<UniversityReview[]>([])
+  const [reviewAverage, setReviewAverage] = useState<number | null>(null)
+  const [reviewForm, setReviewForm] = useState({
+    academics: 5,
+    campusLife: 5,
+    dormitory: 4,
+    internationalSupport: 5,
+    difficulty: 3,
+    costValue: 4,
+    location: 5,
+    overallRating: 5,
+    comment: "",
+  })
+  const [reviewMessage, setReviewMessage] = useState("")
   const [deadlineMessage, setDeadlineMessage] = useState("")
   const reduceMotion = useReducedMotion()
   const uni = loadedUni || fallbackUni
@@ -56,6 +81,45 @@ function UniversityDetail() {
       ignore = true
     }
   }, [identifier])
+
+  useEffect(() => {
+    if (!uni) {
+      return
+    }
+
+    let ignore = false
+
+    fetchUniversityPrograms(uni.slug || uni.id)
+      .then((items) => {
+        if (!ignore) {
+          setPrograms(items)
+        }
+      })
+      .catch(() => undefined)
+
+    fetchUniversityReviews(uni.id)
+      .then((response) => {
+        if (!ignore) {
+          const localReviews = getLocalReviews(uni.id)
+          const merged = [...localReviews, ...response.data]
+          setReviews(merged)
+          setReviewAverage(
+            response.meta?.average || (merged.length ? Math.round((merged.reduce((sum, item) => sum + item.overallRating, 0) / merged.length) * 10) / 10 : null),
+          )
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          const localReviews = getLocalReviews(uni.id)
+          setReviews(localReviews)
+          setReviewAverage(localReviews.length ? Math.round((localReviews.reduce((sum, item) => sum + item.overallRating, 0) / localReviews.length) * 10) / 10 : null)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [uni])
 
   useEffect(() => {
     if (!uni) {
@@ -96,6 +160,39 @@ function UniversityDetail() {
     }
 
     setDeadlineMessage("Deadline saved to your dashboard.")
+  }
+
+  const submitReview = async () => {
+    if (!uni) {
+      return
+    }
+
+    if (reviewForm.comment.trim().length < 20) {
+      setReviewMessage("Please write at least 20 characters.")
+      return
+    }
+
+    const token = getToken()
+
+    if (token && !isLocalAuthToken(token)) {
+      try {
+        const created = await submitUniversityReview(token, uni.id, reviewForm)
+        setReviews((items) => [created, ...items])
+        setReviewMessage("Review added.")
+        setReviewForm((current) => ({ ...current, comment: "" }))
+        return
+      } catch {
+        setReviewMessage("Backend unavailable, saved locally.")
+      }
+    }
+
+    const created = saveLocalReview({
+      ...reviewForm,
+      universityId: uni.id,
+      author: null,
+    })
+    setReviews((items) => [created, ...items])
+    setReviewForm((current) => ({ ...current, comment: "" }))
   }
 
   if (!uni) {
@@ -189,6 +286,15 @@ function UniversityDetail() {
               <span key={program} className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-gray-700">{program}</span>
             ))}
           </div>
+          {programs.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {programs.slice(0, 4).map((program) => (
+                <Link key={program.slug} to={`/programs/${program.slug}`} className="block text-sm text-teal hover:underline">
+                  {program.name} program details
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bg-surface rounded-2xl shadow-sm p-5">
@@ -249,6 +355,59 @@ function UniversityDetail() {
             <p>Email: <strong>{uni.contact?.email || "Not listed"}</strong></p>
             <p>Phone: <strong>{uni.contact?.phone || "Not listed"}</strong></p>
             <p>Address: <strong>{uni.contact?.address || "Not listed"}</strong></p>
+          </div>
+        </section>
+
+        <section className="bg-surface rounded-2xl shadow-sm p-5 md:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-navy">Student Reviews</h2>
+              <p className="text-sm text-muted">
+                {reviewAverage ? `${reviewAverage}/5 average from ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "No reviews yet."}
+              </p>
+            </div>
+            <Link to="/reviews" className="text-sm text-teal hover:underline">All reviews</Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-3">
+              {reviews.length === 0 && <p className="text-sm text-muted">Be the first to add a student review.</p>}
+              {reviews.slice(0, 3).map((review) => (
+                <div key={review.id || review.comment} className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <strong className="text-navy">{review.author?.name || "Student"}</strong>
+                    <span className="text-teal font-semibold">{review.overallRating}/5</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div className="grid grid-cols-2 gap-2">
+                {(["academics", "campusLife", "dormitory", "internationalSupport", "difficulty", "costValue", "location", "overallRating"] as const).map((field) => (
+                  <label key={field} className="text-xs text-gray-700">
+                    {field.replace(/([A-Z])/g, " $1")}
+                    <select
+                      value={reviewForm[field]}
+                      onChange={(event) => setReviewForm({ ...reviewForm, [field]: Number(event.target.value) })}
+                      className="mt-1 w-full bg-cream border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+                    >
+                      {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <textarea
+                value={reviewForm.comment}
+                onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })}
+                rows={4}
+                placeholder="Share helpful details for future applicants..."
+                className="mt-3 w-full bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+              />
+              <button onClick={submitReview} className="mt-2 text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy-light transition-colors">Submit review</button>
+              {reviewMessage && <p className="mt-2 text-sm text-teal">{reviewMessage}</p>}
+            </div>
           </div>
         </section>
       </div>
