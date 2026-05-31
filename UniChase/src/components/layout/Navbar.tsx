@@ -34,7 +34,7 @@ export default function Navbar() {
     }
   }, [])
 
-  const submitSearch = () => {
+  const _submitSearch = () => {
     const trimmed = query.trim()
 
     if (!trimmed) {
