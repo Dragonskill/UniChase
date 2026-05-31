@@ -16,9 +16,25 @@ type LocalStudentUser = StudentUser & {
 
 const localUsersKey = "unichase.localStudentUsers"
 const localTokenPrefix = "local-student:"
+const localApiPattern = /(^|\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
+}
+
+function isLocalBrowserHost() {
+  if (typeof window === "undefined") {
+    return true
+  }
+
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+}
+
+function shouldUseBrowserOnlyAuth() {
+  const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
+  const apiBase = configuredApiBase || "http://localhost:3001/api"
+
+  return !isLocalBrowserHost() && localApiPattern.test(apiBase)
 }
 
 function readLocalUsers() {
@@ -124,7 +140,11 @@ async function loginLocalStudent(data: { email: string; password: string }): Pro
   const user = readLocalUsers().find((item) => item.email === email)
   const passwordHash = await hashLocalPassword(email, data.password)
 
-  if (!user || user.passwordHash !== passwordHash) {
+  if (!user) {
+    throw new Error("No account found for this email. Please sign up first.")
+  }
+
+  if (user.passwordHash !== passwordHash) {
     throw new Error("Invalid login credentials")
   }
 
@@ -192,6 +212,10 @@ export async function registerStudentAccount(data: { name: string; email: string
     email: normalizeEmail(data.email),
   }
 
+  if (shouldUseBrowserOnlyAuth()) {
+    return registerLocalStudent(normalizedData)
+  }
+
   try {
     const response = await registerStudent(normalizedData)
     return { ...response.data, mode: "api" as const }
@@ -208,6 +232,10 @@ export async function loginStudentAccount(data: { email: string; password: strin
   const normalizedData = {
     ...data,
     email: normalizeEmail(data.email),
+  }
+
+  if (shouldUseBrowserOnlyAuth()) {
+    return loginLocalStudent(normalizedData)
   }
 
   try {
