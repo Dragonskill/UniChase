@@ -11,8 +11,10 @@ export type ModeratorAccount = {
 }
 
 type ModeratorSession = {
+  adminId?: number
   name: string
   email: string
+  token?: string
   signedInAt: string
 }
 
@@ -59,6 +61,17 @@ function writeSession(account: Pick<ModeratorAccount, 'name' | 'email'>) {
   localStorage.setItem(moderatorSessionKey, JSON.stringify(session))
   notifyModeratorAuthChange()
   return session
+}
+
+export function setModeratorSession(session: Omit<ModeratorSession, 'signedInAt'>) {
+  const nextSession: ModeratorSession = {
+    ...session,
+    signedInAt: new Date().toISOString(),
+  }
+
+  localStorage.setItem(moderatorSessionKey, JSON.stringify(nextSession))
+  notifyModeratorAuthChange()
+  return nextSession
 }
 
 export function getModeratorSession() {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
-import { universities } from "@/data/universities"
+import type { University } from "@/data/universities"
 import UniversityCard from "@/components/ui/UniversityCard"
 import { fetchFilteredUniversities, removeUniversityFromAccount, saveUniversityToAccount } from "@/lib/api"
 import {
@@ -51,8 +51,9 @@ function UniversityList() {
     ...initialFilters,
     search: searchParams.get("search") || "",
   }))
-  const [universityList, setUniversityList] = useState(universities)
+  const [universityList, setUniversityList] = useState<University[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
   const [savedIds, setSavedIds] = useState<number[]>(() => getSavedUniversityIds())
   const [compareIds, setCompareIds] = useState<number[]>(() => getCompareUniversityIds())
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecentSearches())
@@ -93,11 +94,13 @@ function UniversityList() {
         .then((items) => {
           if (!ignore) {
             setUniversityList(items.length > 0 ? items : [])
+            setErrorMessage("")
           }
         })
         .catch(() => {
           if (!ignore) {
-            setUniversityList(universities)
+            setUniversityList([])
+            setErrorMessage("Could not load universities from the UniChase API. Start the API and seed the database, then try again.")
           }
         })
         .finally(() => {
@@ -289,7 +292,39 @@ function UniversityList() {
         transition={{ duration: 0.18, ease: "easeOut" }}
         className="card-pop grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6"
       >
-        {universityList.map((uni) => (
+        {isLoading &&
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="rounded-2xl overflow-hidden bg-white shadow-sm animate-pulse">
+              <div className="h-44 bg-cream-dark" />
+              <div className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-cream-dark" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-2/3 rounded bg-cream-dark" />
+                    <div className="h-3 w-1/3 rounded bg-cream-dark" />
+                  </div>
+                </div>
+                <div className="mt-5 h-3 w-full rounded bg-cream-dark" />
+                <div className="mt-3 h-3 w-5/6 rounded bg-cream-dark" />
+              </div>
+            </div>
+          ))}
+
+        {!isLoading && errorMessage && (
+          <div className="col-span-full bg-surface rounded-2xl shadow-sm p-6">
+            <h2 className="text-lg font-bold text-navy">University data is not connected yet</h2>
+            <p className="mt-2 text-sm text-muted">{errorMessage}</p>
+          </div>
+        )}
+
+        {!isLoading && !errorMessage && universityList.length === 0 && (
+          <div className="col-span-full bg-surface rounded-2xl shadow-sm p-6">
+            <h2 className="text-lg font-bold text-navy">No universities found</h2>
+            <p className="mt-2 text-sm text-muted">Try a broader search or reset the filters.</p>
+          </div>
+        )}
+
+        {!isLoading && !errorMessage && universityList.map((uni) => (
           <UniversityCard
             key={uni.id}
             uni={uni}

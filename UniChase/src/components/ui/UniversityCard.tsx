@@ -28,6 +28,7 @@ function UniversityCard({
         <img
           src={uni.image}
           alt={uni.name}
+          loading="lazy"
           className="h-44 w-full object-cover"
         />
         <button
@@ -48,6 +49,7 @@ function UniversityCard({
           <img
             src={uni.logo}
             alt={`${uni.name} logo`}
+            loading="lazy"
             className="h-10 w-10 object-contain"
           />
           <div>
@@ -63,21 +65,17 @@ function UniversityCard({
 
         {/* QS + acceptance rate */}
         <div className="mt-4 flex flex-col gap-2 border-b border-gray-100 pb-4">
-          {uni.qsRanking && (
-            <div className="flex items-center gap-2">
-              <img
-                src="https://files.bpcontent.cloud/2025/06/20/06/20250620064449-IG082B2O.png"
-                alt="QS"
-                className="h-5 w-auto rounded"
-              />
-              <span className="text-sm text-gray-700">QS: {uni.qsRanking}</span>
-            </div>
-          )}
-          {uni.acceptanceRate && (
-            <span className="text-sm text-gray-700">
-              Acceptance rate: {uni.acceptanceRate}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <img
+              src="https://files.bpcontent.cloud/2025/06/20/06/20250620064449-IG082B2O.png"
+              alt="QS"
+              className="h-5 w-auto rounded"
+            />
+            <span className="text-sm text-gray-700">QS: {uni.qsRanking || "Not available"}</span>
+          </div>
+          <span className="text-sm text-gray-700">
+            Acceptance rate: {uni.acceptanceRate || "Not available"}
+          </span>
         </div>
 
         {/* Description */}
