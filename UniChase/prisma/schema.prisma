@@ -25,6 +25,10 @@ model University {
   officialWebsite          String   @unique
   imageUrl                 String?
   logoUrl                  String?
+  campusImageUrl           String?
+  imageAlt                 String?
+  imageSourceUrl           String?
+  imageLastVerifiedAt      DateTime?
   description              String   @db.Text
   fullDescription          String?  @db.Text
   programs                 String[] @default([])

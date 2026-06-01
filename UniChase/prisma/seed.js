@@ -55,7 +55,7 @@ const universities = [
     universityType: "private",
     qsRanking: 50,
     qsRankingLabel: "#50",
-    officialWebsite: "https://www.yonsei.ac.kr/en_sc",
+    officialWebsite: "https://www.yonsei.ac.kr/en_sc/",
     mainColor: "#0B24DF",
   },
   {
@@ -320,6 +320,88 @@ const universities = [
   },
 ]
 
+const universityImages = {
+  "Seoul National University": {
+    campusImageUrl: "https://en.snu.ac.kr/webdata/eng/gallery/thumb/fb9z62dzd5fz1dbz925z112zdf6z1b3zf30z304zfd.jpg",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/7/77/Seoul_national_university_emblem.svg/250px-Seoul_national_university_emblem.svg.png",
+    imageSourceUrl: "https://en.snu.ac.kr",
+  },
+  "Yonsei University": {
+    campusImageUrl: "https://www.yonsei.ac.kr/sites/sc/atchmnfl_mngr/imageSlide/73/temp_1750298387242100.jpg",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/9/95/YonseiUniversityEmblem.svg/250px-YonseiUniversityEmblem.svg.png",
+    imageSourceUrl: "https://www.yonsei.ac.kr/en_sc/",
+  },
+  "Korea University": {
+    campusImageUrl: "https://uploaded.kcampus.kr/1_5f0ebd83_623d_4f9c_9556_52c82dbd5a15_0de2b3e5f9.jpg",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Korea_University_Global_Symbol.svg/250px-Korea_University_Global_Symbol.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Korea_University",
+  },
+  "Pohang University of Science And Technology (POSTECH)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/a/a5/POSTECH_emblem.svg/250px-POSTECH_emblem.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Pohang_University_of_Science_and_Technology",
+  },
+  "Sungkyunkwan University (SKKU)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Sungkyunkwan_University_seal.svg/330px-Sungkyunkwan_University_seal.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Sungkyunkwan_University",
+  },
+  "Hanyang University": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/0/0a/Hanyang_University_new_UI.svg/250px-Hanyang_University_new_UI.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Hanyang_University",
+  },
+  "Ulsan National Institute of Science and Technology (UNIST)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/4/48/Latest_UNIST_logo.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Ulsan_National_Institute_of_Science_and_Technology",
+  },
+  "Kyung Hee University": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/4/41/Kyung_Hee_University_emblem.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Kyung_Hee_University",
+  },
+  "Daegu Gyeongbuk Institute of Science and Technology (DGIST)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/a/a8/DGIST_Emblem_2.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Daegu_Gyeongbuk_Institute_of_Science_and_Technology",
+  },
+  "Gwangju Institute of Science and Technology (GIST)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/en/d/d4/Gwangju_Institute_of_Science_and_Technology_%28logo%29.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Gwangju_Institute_of_Science_and_Technology",
+  },
+  "Sejong University": {
+    campusImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Sejong_University_Front_Gate.jpg/960px-Sejong_University_Front_Gate.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Sejong_University",
+  },
+  "Pusan National University": {
+    campusImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Pusan_Natl_Univ_by_Ficell_006.jpg/960px-Pusan_Natl_Univ_by_Ficell_006.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Pusan_National_University",
+  },
+  "Chung-Ang University (CAU)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/0/0b/CAU_emblem.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Chung-Ang_University",
+  },
+  "Kyungpook National University": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Knuemblem00.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Kyungpook_National_University",
+  },
+  "Konkuk University": {
+    campusImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ilgam_Lake_in_the_fall.jpg/960px-Ilgam_Lake_in_the_fall.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Konkuk_University",
+  },
+  "HUFS - Hankuk (Korea) University of Foreign Studies": {
+    campusImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Hankuk_University_of_Foreign_Studies%2C_Seoul_Campus.jpg/960px-Hankuk_University_of_Foreign_Studies%2C_Seoul_Campus.jpg",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Hankuk_University_of_Foreign_Studies",
+  },
+  "Jeonbuk National University": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Emblem_of_Jeonbuk_National_University.png/960px-Emblem_of_Jeonbuk_National_University.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Jeonbuk_National_University",
+  },
+  "The Catholic University of Korea (CUK)": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Catholic_University_of_Korea_logo.svg/960px-Catholic_University_of_Korea_logo.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/Catholic_University_of_Korea",
+  },
+  "University of Seoul": {
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/University_of_Seoul.svg/960px-University_of_Seoul.svg.png",
+    imageSourceUrl: "https://en.wikipedia.org/wiki/University_of_Seoul",
+  },
+}
+
 function slugify(value) {
   return value
     .toLowerCase()
@@ -328,7 +410,9 @@ function slugify(value) {
 }
 
 function universityData(university) {
+  const imageData = universityImages[university.name] || {}
   const shortDescription = `${university.name} is a South Korean university listed in the QS World University Rankings 2026.`
+  const sourceUrls = [qsSourceUrl, koreaRankingSourceUrl, university.officialWebsite, imageData.imageSourceUrl].filter(Boolean)
 
   return {
     ...university,
@@ -337,10 +421,14 @@ function universityData(university) {
     qsRankingYear: 2026,
     rankingSourceNote,
     qsSourceUrl,
-    sourceUrls: [qsSourceUrl, koreaRankingSourceUrl, university.officialWebsite],
+    sourceUrls: [...new Set(sourceUrls)],
     lastVerifiedAt,
-    imageUrl: null,
-    logoUrl: null,
+    imageUrl: imageData.campusImageUrl || null,
+    logoUrl: imageData.logoUrl || null,
+    campusImageUrl: imageData.campusImageUrl || null,
+    imageAlt: `${university.name} campus image`,
+    imageSourceUrl: imageData.imageSourceUrl || university.officialWebsite,
+    imageLastVerifiedAt: lastVerifiedAt,
     description: shortDescription,
     fullDescription:
       `${shortDescription} Admissions, tuition, student council, housing, and contact details should be verified from official university sources before publication.`,

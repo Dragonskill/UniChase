@@ -6,6 +6,7 @@ import UniversityCard from "@/components/ui/UniversityCard"
 import { fetchFilteredUniversities, removeUniversityFromAccount, saveUniversityToAccount } from "@/lib/api"
 import {
   addRecentSearch,
+  getRecentlyViewedUniversities,
   getCompareUniversityIds,
   getRecentSearches,
   getSavedUniversityIds,
@@ -28,6 +29,7 @@ type FilterState = {
   type: string
   deadline: string
   level: string
+  sort: string
 }
 
 const initialFilters: FilterState = {
@@ -43,6 +45,7 @@ const initialFilters: FilterState = {
   type: "",
   deadline: "",
   level: "",
+  sort: "qsRank",
 }
 
 function normalized(value?: string | null) {
@@ -58,10 +61,20 @@ function rankingNumber(university: University) {
   return match ? Number(match[0]) : null
 }
 
+function sortedFallbackItems(items: University[], sort: string) {
+  return [...items].sort((a, b) => {
+    if (sort === "name") return a.name.localeCompare(b.name)
+    if (sort === "city") return (a.city || a.location).localeCompare(b.city || b.location) || a.name.localeCompare(b.name)
+    if (sort === "tuition") return (a.tuition?.min ?? Number.MAX_SAFE_INTEGER) - (b.tuition?.min ?? Number.MAX_SAFE_INTEGER)
+    if (sort === "recent") return (new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()) || b.id - a.id
+    return (rankingNumber(a) ?? Number.MAX_SAFE_INTEGER) - (rankingNumber(b) ?? Number.MAX_SAFE_INTEGER)
+  })
+}
+
 function applyFallbackFilters(items: University[], filters: FilterState) {
   const search = normalized(filters.search)
 
-  return items.filter((university) => {
+  const filtered = items.filter((university) => {
     const rank = rankingNumber(university)
     const tuitionMin = university.tuition?.min ?? null
     const tuitionMax = university.tuition?.max ?? null
@@ -99,6 +112,8 @@ function applyFallbackFilters(items: University[], filters: FilterState) {
 
     return true
   })
+
+  return sortedFallbackItems(filtered, filters.sort)
 }
 
 function UniversityList() {
@@ -113,6 +128,9 @@ function UniversityList() {
   const [savedIds, setSavedIds] = useState<number[]>(() => getSavedUniversityIds())
   const [compareIds, setCompareIds] = useState<number[]>(() => getCompareUniversityIds())
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecentSearches())
+  const [recentlyViewed, setRecentlyViewed] = useState(() => getRecentlyViewedUniversities())
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   const reduceMotion = useReducedMotion()
 
   const queryFilters = useMemo(
@@ -129,6 +147,7 @@ function UniversityList() {
       type: filters.type,
       deadline: filters.deadline,
       level: filters.level,
+      sort: filters.sort,
     }),
     [filters],
   )
@@ -139,6 +158,19 @@ function UniversityList() {
       description: "Search, filter, save, and compare Korean universities for international study.",
       canonicalPath: "/university",
     })
+  }, [])
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 520)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  useEffect(() => {
+    const syncRecentlyViewed = () => setRecentlyViewed(getRecentlyViewedUniversities())
+    window.addEventListener("storage", syncRecentlyViewed)
+    return () => window.removeEventListener("storage", syncRecentlyViewed)
   }, [])
 
   useEffect(() => {
@@ -215,8 +247,24 @@ function UniversityList() {
 
   return (
     <div className="page-fade max-w-6xl mx-auto px-6 py-8">
+      <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+        <Link to="/" className="hover:text-teal">Home</Link>
+        <span>/</span>
+        <span className="text-ink">Universities</span>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">Showing {isLoading ? "..." : universityList.length} universities</p>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((current) => !current)}
+          className="sm:hidden rounded-full border border-gray-200 bg-surface px-4 py-2 text-sm font-medium text-muted"
+          aria-expanded={filtersOpen}
+        >
+          {filtersOpen ? "Hide filters" : "Show filters"}
+        </button>
+      </div>
       <form onSubmit={submitFilters} className="mb-6 bg-surface rounded-2xl shadow-sm p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className={`${filtersOpen ? "grid" : "hidden"} grid-cols-1 sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3`}>
           <input
             value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
@@ -310,6 +358,17 @@ function UniversityList() {
             <option value="undergraduate">Undergraduate</option>
             <option value="graduate">Graduate</option>
           </select>
+          <select
+            value={filters.sort}
+            onChange={(e) => updateFilter("sort", e.target.value)}
+            className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+          >
+            <option value="qsRank">Sort: QS ranking</option>
+            <option value="name">Sort: Name</option>
+            <option value="city">Sort: City</option>
+            <option value="tuition">Sort: Tuition</option>
+            <option value="recent">Sort: Recently added</option>
+          </select>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="submit" className="bg-navy text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-navy-light transition-colors">
@@ -336,6 +395,16 @@ function UniversityList() {
               >
                 {item}
               </button>
+            ))}
+          </div>
+        )}
+        {recentlyViewed.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-xs text-muted px-1 py-1">Recently viewed</span>
+            {recentlyViewed.map((item) => (
+              <Link key={item.id} to={`/universities/${item.slug || item.id}`} className="text-xs text-muted bg-cream border border-gray-200 rounded-full px-3 py-1 hover:text-teal">
+                {item.name}
+              </Link>
             ))}
           </div>
         )}
@@ -393,6 +462,15 @@ function UniversityList() {
           />
         ))}
       </motion.div>
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-5 right-5 z-40 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+        >
+          Back to top
+        </button>
+      )}
     </div>
   )
 }

@@ -91,6 +91,26 @@ export function buildUniversityWhere(filters = {}) {
   return and.length > 0 ? { AND: and } : {}
 }
 
+export function buildUniversityOrder(sort) {
+  if (sort === "name") {
+    return [{ name: "asc" }]
+  }
+
+  if (sort === "city") {
+    return [{ city: "asc" }, { name: "asc" }]
+  }
+
+  if (sort === "tuition") {
+    return [{ tuitionMin: { sort: "asc", nulls: "last" } }, { qsRanking: { sort: "asc", nulls: "last" } }]
+  }
+
+  if (sort === "recent") {
+    return [{ createdAt: "desc" }, { updatedAt: "desc" }]
+  }
+
+  return [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "asc" }]
+}
+
 function normalize(value) {
   return String(value || "").toLowerCase()
 }

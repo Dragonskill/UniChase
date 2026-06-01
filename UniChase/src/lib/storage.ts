@@ -2,6 +2,7 @@ const savedKey = "unichase.savedUniversities"
 const compareKey = "unichase.compareUniversities"
 const deadlineKey = "unichase.deadlines"
 const recentSearchKey = "unichase.recentSearches"
+const recentlyViewedKey = "unichase.recentlyViewedUniversities"
 const tokenKey = "unichase.studentToken"
 const userKey = "unichase.studentUser"
 const languageKey = "unichase.language"
@@ -86,6 +87,28 @@ export function addRecentSearch(query: string) {
   }
 
   writeJson(recentSearchKey, [trimmed, ...getRecentSearches().filter((item) => item !== trimmed)].slice(0, 5))
+}
+
+export type RecentlyViewedUniversity = {
+  id: number
+  name: string
+  slug?: string | null
+  city?: string | null
+  viewedAt: string
+}
+
+export function getRecentlyViewedUniversities() {
+  return readJson<RecentlyViewedUniversity[]>(recentlyViewedKey, [])
+}
+
+export function addRecentlyViewedUniversity(university: Omit<RecentlyViewedUniversity, "viewedAt">) {
+  const viewed = {
+    ...university,
+    viewedAt: new Date().toISOString(),
+  }
+  const next = [viewed, ...getRecentlyViewedUniversities().filter((item) => item.id !== university.id)].slice(0, 6)
+  writeJson(recentlyViewedKey, next)
+  return next
 }
 
 export function getToken() {

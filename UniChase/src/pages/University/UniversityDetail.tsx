@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
 import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
+import UniversityImage from "@/components/ui/UniversityImage"
 import { fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
 import { applySeo } from "@/lib/seo"
-import { getToken, saveLocalDeadline } from "@/lib/storage"
+import { addRecentlyViewedUniversity, getToken, saveLocalDeadline } from "@/lib/storage"
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -50,6 +51,7 @@ function UniversityDetail() {
   const [isLoading, setIsLoading] = useState(Boolean(identifier))
   const [errorMessage, setErrorMessage] = useState(() => (identifier ? "" : "University not found."))
   const [deadlineMessage, setDeadlineMessage] = useState("")
+  const [shareMessage, setShareMessage] = useState("")
   const reduceMotion = useReducedMotion()
   const uni = loadedUni
   const isBackendLoaded = Boolean(loadedUni)
@@ -112,7 +114,30 @@ function UniversityDetail() {
         address: uni.contact?.address,
       },
     })
+    addRecentlyViewedUniversity({
+      id: uni.id,
+      name: uni.name,
+      slug: uni.slug,
+      city: uni.city || uni.location,
+    })
   }, [uni])
+
+  const sharePage = async () => {
+    const url = window.location.href
+
+    if (navigator.share) {
+      await navigator.share({ title: uni?.name || "UniChase university", url }).catch(() => undefined)
+      return
+    }
+
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(url)
+      setShareMessage("Link copied.")
+    } else {
+      setShareMessage(url)
+    }
+    window.setTimeout(() => setShareMessage(""), 2200)
+  }
 
   const saveDeadline = (deadlineType: "application" | "scholarship" | "document") => {
     if (!uni) {
@@ -162,16 +187,31 @@ function UniversityDetail() {
       transition={{ duration: 0.18, ease: "easeOut" }}
       className="page-fade max-w-6xl mx-auto px-6 py-8"
     >
-      <img
+      <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+        <Link to="/" className="hover:text-teal">Home</Link>
+        <span>/</span>
+        <Link to="/university" className="hover:text-teal">Universities</Link>
+        <span>/</span>
+        <span className="text-ink">{uni.name}</span>
+      </div>
+
+      <UniversityImage
         src={uni.image}
-        alt={uni.name}
-        className="mt-4 h-64 w-full object-cover rounded-2xl"
+        alt={uni.imageAlt || `${uni.name} campus image`}
+        fallbackLabel={uni.name}
+        color={uni.mainColor}
+        loading="eager"
+        className="mt-4 h-64 w-full object-cover rounded-2xl bg-cream-dark"
       />
 
-      <div className="mt-6 flex items-center gap-4">
-        <img
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+        <UniversityImage
           src={uni.logo}
           alt={`${uni.name} logo`}
+          fallbackLabel={uni.name}
+          color={uni.mainColor}
+          kind="logo"
           className="h-14 w-14 object-contain"
         />
         <div>
@@ -183,7 +223,17 @@ function UniversityDetail() {
           </h1>
           <p className="text-gray-500">{uni.location}</p>
         </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-gray-200 bg-cream px-3 py-1 text-xs text-muted">
+            {uni.imageLastVerifiedAt || uni.lastVerifiedAt ? "Verified" : "Needs verification"}
+          </span>
+          <button onClick={sharePage} className="rounded-full border border-gray-200 bg-surface px-4 py-2 text-sm text-muted hover:text-teal">
+            Share
+          </button>
+        </div>
       </div>
+      {shareMessage && <p className="mt-2 text-sm text-teal">{shareMessage}</p>}
 
       <div className="mt-4 flex flex-wrap gap-6">
         <span className="text-sm text-gray-700">
@@ -288,6 +338,7 @@ function UniversityDetail() {
           <h2 className="text-lg font-bold text-navy mb-3">Official Links and Contact</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
             <a href={uni.officialWebsite} target="_blank" rel="noreferrer" className="text-teal hover:underline">Official website</a>
+            {uni.imageSourceUrl && <a href={uni.imageSourceUrl} target="_blank" rel="noreferrer" className="text-teal hover:underline">Image source</a>}
             <p>Email: <strong>{uni.contact?.email || "Not listed"}</strong></p>
             <p>Phone: <strong>{uni.contact?.phone || "Not listed"}</strong></p>
             <p>Address: <strong>{uni.contact?.address || "Not listed"}</strong></p>

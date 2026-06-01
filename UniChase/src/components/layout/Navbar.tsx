@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Moon, Sun } from 'lucide-react'
 import LoginDropdown from './LoginDropdown'
 import GlowLetters from '@/components/ui/GlowLetters'
 import { useI18n, type Language } from '@/lib/i18n'
 import { authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
+import { getStoredTheme, setStoredTheme, themeChangeEvent, type ThemeMode } from '@/lib/theme'
 
 const links = [
   { to: '/university', labelKey: 'university' },
@@ -19,6 +21,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const [signedIn, setSignedIn] = useState(() => Boolean(getToken() && getStoredUser()))
 
   useEffect(() => {
@@ -34,7 +37,35 @@ export default function Navbar() {
     }
   }, [])
 
+  useEffect(() => {
+    function syncTheme() {
+      setTheme(getStoredTheme())
+    }
 
+    window.addEventListener(themeChangeEvent, syncTheme)
+    window.addEventListener('storage', syncTheme)
+    return () => {
+      window.removeEventListener(themeChangeEvent, syncTheme)
+      window.removeEventListener('storage', syncTheme)
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(nextTheme)
+    setStoredTheme(nextTheme)
+  }
+
+  const themeToggle = (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-cream text-muted hover:text-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+    >
+      {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+    </button>
+  )
 
   return (
     <nav className="w-full bg-surface/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -92,6 +123,8 @@ export default function Navbar() {
             <option value="uz">UZ</option>
           </select>
 
+          <div className="hidden sm:block">{themeToggle}</div>
+
           {/* Auth - desktop */}
           <div className="hidden md:block"><LoginDropdown /></div>
           <Link to="/dashboard" className="hidden lg:inline text-sm font-medium text-muted hover:text-teal transition-colors">{t('dashboard')}</Link>
@@ -128,6 +161,7 @@ export default function Navbar() {
             <option value="ru">RU</option>
             <option value="uz">UZ</option>
           </select>
+          <div className="sm:hidden">{themeToggle}</div>
           {!signedIn && (
             <div className="flex gap-3 pt-3 border-t border-gray-100">
               <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-full">{t('login')}</Link>

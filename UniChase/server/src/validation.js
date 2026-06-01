@@ -79,6 +79,10 @@ const universityBaseShape = {
   officialWebsite: z.string().trim().url().max(500),
   imageUrl: nullableUrl(800),
   logoUrl: nullableUrl(800),
+  campusImageUrl: nullableUrl(800),
+  imageAlt: nullableString(240),
+  imageSourceUrl: nullableUrl(800),
+  imageLastVerifiedAt: nullableDate,
   description: cleanString(4000),
   fullDescription: nullableString(8000),
   programs: stringArray.min(1),
@@ -160,6 +164,21 @@ export const universityUpdateSchema = z
     path: ["tuitionMax"],
   })
 
+export const universityImageUpdateSchema = z
+  .object({
+    imageUrl: nullableUrl(800),
+    logoUrl: nullableUrl(800),
+    campusImageUrl: nullableUrl(800),
+    imageAlt: nullableString(240),
+    imageSourceUrl: nullableUrl(800),
+    imageLastVerifiedAt: nullableDate,
+    lastVerifiedAt: nullableDate,
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one image field is required",
+  })
+
 export const adminLoginSchema = z.object({
   email: z.string().trim().email().max(200),
   password: z.string().min(8).max(200),
@@ -199,6 +218,7 @@ export const universityQuerySchema = z
     level: z.string().trim().max(80).optional(),
     scholarship: booleanQuery,
     hasScholarships: booleanQuery,
+    sort: z.enum(["qsRank", "name", "city", "tuition", "recent"]).optional(),
   })
   .strip()
 

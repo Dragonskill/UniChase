@@ -14,10 +14,12 @@ import {
   fetchUniversities,
   loginAdmin,
   saveModeratorProfile,
+  updateModeratorUniversityImages,
   updateModeratorStudentCouncil,
   updateModeratorStudentCouncilRole,
   type StudentCouncilInput,
   type StudentCouncilRoleInput,
+  type UniversityImageInput,
 } from '@/lib/api'
 import {
   createNextId,
@@ -136,6 +138,16 @@ const blankRoleForm: StudentCouncilRoleInput = {
   sourceUrl: '',
 }
 
+const blankImageForm: UniversityImageInput = {
+  imageUrl: '',
+  campusImageUrl: '',
+  logoUrl: '',
+  imageAlt: '',
+  imageSourceUrl: '',
+  imageLastVerifiedAt: '',
+  lastVerifiedAt: '',
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid gap-1">
@@ -241,6 +253,7 @@ export default function Moderator() {
   const [studentCouncils, setStudentCouncils] = useState<StudentCouncil[]>([])
   const [councilForm, setCouncilForm] = useState<StudentCouncilInput>(blankCouncilForm)
   const [roleForm, setRoleForm] = useState<StudentCouncilRoleInput>(blankRoleForm)
+  const [imageForm, setImageForm] = useState<UniversityImageInput>(blankImageForm)
   const [profileForm, setProfileForm] = useState({
     displayName: session?.name || '',
     description: '',
@@ -340,6 +353,29 @@ export default function Moderator() {
         setStatus('Student council saved.')
       })
       .catch(() => setStatus('Could not save student council.'))
+  }
+
+  const saveUniversityImages = () => {
+    if (!session?.token || !councilForm.universityId) {
+      setStatus('Backend admin login and university selection are required.')
+      return
+    }
+
+    updateModeratorUniversityImages(session.token, Number(councilForm.universityId), imageForm)
+      .then((university) => {
+        setUniversities((current) => current.map((item) => (item.id === university.id ? university : item)))
+        setImageForm({
+          imageUrl: university.imageUrl || '',
+          campusImageUrl: university.campusImageUrl || '',
+          logoUrl: university.logoUrl || '',
+          imageAlt: university.imageAlt || '',
+          imageSourceUrl: university.imageSourceUrl || '',
+          imageLastVerifiedAt: (university.imageLastVerifiedAt || '').slice(0, 10),
+          lastVerifiedAt: (university.lastVerifiedAt || '').slice(0, 10),
+        })
+        setStatus('University image data saved.')
+      })
+      .catch(() => setStatus('Could not save university image data.'))
   }
 
   const saveCouncilRole = () => {
@@ -516,11 +552,14 @@ export default function Moderator() {
           councils={studentCouncils}
           councilForm={councilForm}
           roleForm={roleForm}
+          imageForm={imageForm}
           profileForm={profileForm}
           setCouncilForm={setCouncilForm}
           setRoleForm={setRoleForm}
+          setImageForm={setImageForm}
           setProfileForm={setProfileForm}
           onSaveCouncil={saveCouncil}
+          onSaveUniversityImages={saveUniversityImages}
           onSaveRole={saveCouncilRole}
           onSaveProfile={saveProfile}
           onEditCouncil={(council) => {
@@ -537,6 +576,16 @@ export default function Moderator() {
               lastVerifiedAt: council.lastVerifiedAt || '',
             })
             setRoleForm({ ...blankRoleForm, councilId: council.id, universityId: council.universityId })
+            const university = universities.find((item) => item.id === council.universityId)
+            setImageForm({
+              imageUrl: university?.imageUrl || '',
+              campusImageUrl: university?.campusImageUrl || '',
+              logoUrl: university?.logoUrl || '',
+              imageAlt: university?.imageAlt || `${university?.name || ''} campus image`,
+              imageSourceUrl: university?.imageSourceUrl || university?.officialWebsite || '',
+              imageLastVerifiedAt: (university?.imageLastVerifiedAt || '').slice(0, 10),
+              lastVerifiedAt: (university?.lastVerifiedAt || '').slice(0, 10),
+            })
           }}
           onDeleteCouncil={removeCouncil}
           onDeleteRole={removeCouncilRole}
@@ -562,11 +611,14 @@ function StudentCouncilManager({
   councils,
   councilForm,
   roleForm,
+  imageForm,
   profileForm,
   setCouncilForm,
   setRoleForm,
+  setImageForm,
   setProfileForm,
   onSaveCouncil,
+  onSaveUniversityImages,
   onSaveRole,
   onSaveProfile,
   onEditCouncil,
@@ -580,11 +632,14 @@ function StudentCouncilManager({
   councils: StudentCouncil[]
   councilForm: StudentCouncilInput
   roleForm: StudentCouncilRoleInput
+  imageForm: UniversityImageInput
   profileForm: ProfileForm
   setCouncilForm: (form: StudentCouncilInput) => void
   setRoleForm: (form: StudentCouncilRoleInput) => void
+  setImageForm: (form: UniversityImageInput) => void
   setProfileForm: (form: ProfileForm) => void
   onSaveCouncil: () => void
+  onSaveUniversityImages: () => void
   onSaveRole: () => void
   onSaveProfile: () => void
   onEditCouncil: (council: StudentCouncil) => void
@@ -627,6 +682,15 @@ function StudentCouncilManager({
                   if (existing) {
                     setRoleForm({ ...roleForm, councilId: existing.id, universityId })
                   }
+                  setImageForm({
+                    imageUrl: university?.imageUrl || '',
+                    campusImageUrl: university?.campusImageUrl || '',
+                    logoUrl: university?.logoUrl || '',
+                    imageAlt: university?.imageAlt || (university ? `${university.name} campus image` : ''),
+                    imageSourceUrl: university?.imageSourceUrl || university?.officialWebsite || '',
+                    imageLastVerifiedAt: (university?.imageLastVerifiedAt || '').slice(0, 10),
+                    lastVerifiedAt: (university?.lastVerifiedAt || '').slice(0, 10),
+                  })
                 }}
                 className={inputClass}
                 disabled={!token}
@@ -664,6 +728,41 @@ function StudentCouncilManager({
             </div>
             <button onClick={onSaveCouncil} disabled={!token || !selectedUniversity} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
               Save council
+            </button>
+          </div>
+
+          <div className="border-t border-gray-100 pt-6 grid gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-navy">University photos and verification</h3>
+                <p className="text-xs text-muted">Add campus/logo URLs and source details without changing the public layout.</p>
+              </div>
+              {selectedUniversity && !(selectedUniversity.campusImageUrl || selectedUniversity.imageUrl) && (
+                <span className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-muted">Campus image missing</span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Campus image URL">
+                <input value={imageForm.campusImageUrl || ''} onChange={(event) => setImageForm({ ...imageForm, campusImageUrl: event.target.value, imageUrl: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+              <Field label="Logo URL">
+                <input value={imageForm.logoUrl || ''} onChange={(event) => setImageForm({ ...imageForm, logoUrl: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+              <Field label="Image alt text">
+                <input value={imageForm.imageAlt || ''} onChange={(event) => setImageForm({ ...imageForm, imageAlt: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+              <Field label="Image source URL">
+                <input value={imageForm.imageSourceUrl || ''} onChange={(event) => setImageForm({ ...imageForm, imageSourceUrl: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+              <Field label="Image verified">
+                <input type="date" value={(imageForm.imageLastVerifiedAt || '').slice(0, 10)} onChange={(event) => setImageForm({ ...imageForm, imageLastVerifiedAt: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+              <Field label="University verified">
+                <input type="date" value={(imageForm.lastVerifiedAt || '').slice(0, 10)} onChange={(event) => setImageForm({ ...imageForm, lastVerifiedAt: event.target.value })} className={inputClass} disabled={!token || !selectedUniversity} />
+              </Field>
+            </div>
+            <button onClick={onSaveUniversityImages} disabled={!token || !selectedUniversity} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
+              Save university images
             </button>
           </div>
 
