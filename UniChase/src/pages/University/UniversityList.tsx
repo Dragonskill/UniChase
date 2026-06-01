@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
-import type { University } from "@/data/universities"
+import { universities as fallbackUniversities, type University } from "@/data/universities"
 import UniversityCard from "@/components/ui/UniversityCard"
 import { fetchFilteredUniversities, removeUniversityFromAccount, saveUniversityToAccount } from "@/lib/api"
 import {
@@ -43,6 +43,62 @@ const initialFilters: FilterState = {
   type: "",
   deadline: "",
   level: "",
+}
+
+function normalized(value?: string | null) {
+  return (value || "").toLowerCase()
+}
+
+function rankingNumber(university: University) {
+  if (typeof university.qsRankingNumber === "number") {
+    return university.qsRankingNumber
+  }
+
+  const match = university.qsRanking?.match(/\d+/)
+  return match ? Number(match[0]) : null
+}
+
+function applyFallbackFilters(items: University[], filters: FilterState) {
+  const search = normalized(filters.search)
+
+  return items.filter((university) => {
+    const rank = rankingNumber(university)
+    const tuitionMin = university.tuition?.min ?? null
+    const tuitionMax = university.tuition?.max ?? null
+    const searchable = [
+      university.name,
+      university.koreanName,
+      university.city,
+      university.location,
+      university.description,
+      ...(university.programs || []),
+      university.studentCouncil?.name,
+      ...(university.studentCouncil?.roles || []).flatMap((role) => [
+        role.roleTitle,
+        role.department,
+        role.description,
+        ...(role.responsibilities || []),
+      ]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+
+    if (search && !searchable.includes(search)) return false
+    if (filters.city && !normalized(university.city || university.location).includes(normalized(filters.city))) return false
+    if (filters.major && !(university.programs || []).some((program) => normalized(program).includes(normalized(filters.major)))) return false
+    if (filters.language && !(university.languageOfInstruction || []).some((language) => normalized(language).includes(normalized(filters.language)))) return false
+    if (filters.type && university.universityType !== filters.type) return false
+    if (filters.level && !(university.studyLevels || []).some((level) => normalized(level).includes(normalized(filters.level)))) return false
+    if (filters.dormitory && university.hasDormitory !== (filters.dormitory === "true")) return false
+    if (filters.rankingMin && (rank === null || rank < Number(filters.rankingMin))) return false
+    if (filters.rankingMax && (rank === null || rank > Number(filters.rankingMax))) return false
+    if (filters.tuitionMin && (tuitionMax === null || tuitionMax < Number(filters.tuitionMin))) return false
+    if (filters.tuitionMax && (tuitionMin === null || tuitionMin > Number(filters.tuitionMax))) return false
+    if (filters.deadline && normalized(university.deadlines?.status) !== normalized(filters.deadline)) return false
+
+    return true
+  })
 }
 
 function UniversityList() {
@@ -93,14 +149,15 @@ function UniversityList() {
       fetchFilteredUniversities(queryFilters)
         .then((items) => {
           if (!ignore) {
-            setUniversityList(items.length > 0 ? items : [])
+            setUniversityList(items.length > 0 ? items : applyFallbackFilters(fallbackUniversities, queryFilters))
             setErrorMessage("")
           }
         })
         .catch(() => {
           if (!ignore) {
-            setUniversityList([])
-            setErrorMessage("Could not load universities from the UniChase API. Start the API and seed the database, then try again.")
+            const fallbackItems = applyFallbackFilters(fallbackUniversities, queryFilters)
+            setUniversityList(fallbackItems)
+            setErrorMessage(fallbackItems.length > 0 ? "" : "Could not load universities from the UniChase API. Start the API and seed the database, then try again.")
           }
         })
         .finally(() => {

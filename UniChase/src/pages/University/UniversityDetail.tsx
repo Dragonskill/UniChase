@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
-import type { StudentCouncilRole, University } from "@/data/universities"
+import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
 import { fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
 import { applySeo } from "@/lib/seo"
 import { getToken, saveLocalDeadline } from "@/lib/storage"
@@ -38,6 +38,11 @@ function roleTitle(role: StudentCouncilRole) {
   return role.displayName ? `${role.roleTitle} - ${role.displayName}` : role.roleTitle
 }
 
+function findFallbackUniversity(identifier: string) {
+  const numericId = Number(identifier)
+  return fallbackUniversities.find((university) => university.slug === identifier || university.id === numericId)
+}
+
 function UniversityDetail() {
   const { id, idOrSlug } = useParams()
   const identifier = idOrSlug || id || ""
@@ -67,7 +72,13 @@ function UniversityDetail() {
       })
       .catch(() => {
         if (!ignore) {
-          setErrorMessage("Could not load this university from the UniChase API.")
+          const fallbackUniversity = findFallbackUniversity(identifier)
+          if (fallbackUniversity) {
+            setLoadedUni(fallbackUniversity)
+            setErrorMessage("")
+          } else {
+            setErrorMessage("Could not load this university from the UniChase API.")
+          }
         }
       })
       .finally(() => {
