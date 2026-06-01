@@ -4,10 +4,13 @@ import rateLimit from "express-rate-limit"
 import helmet from "helmet"
 import { getCorsOrigins } from "./config.js"
 import { errorHandler, notFoundHandler } from "./errors.js"
+import { createAnalyticsRouter } from "./routes/analytics.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
 import { createAuthRouter } from "./routes/auth.js"
+import { createCommunityRouter } from "./routes/community.js"
 import { createContactRouter } from "./routes/contact.js"
 import { createModeratorRouter } from "./routes/moderator.js"
+import { createNotificationRouter } from "./routes/notifications.js"
 import { createStudentCouncilRouter } from "./routes/studentCouncils.js"
 import { createStudentAuthRouter } from "./routes/studentAuth.js"
 import { createUserRouter } from "./routes/user.js"
@@ -40,6 +43,9 @@ export function createApp({ prisma }) {
 
   app.use("/api/universities", createUniversityRouter(prisma))
   app.use("/api/student-councils", createStudentCouncilRouter(prisma))
+  app.use("/api/community", createCommunityRouter(prisma))
+  app.use("/api/notifications", createNotificationRouter(prisma))
+  app.use("/api/analytics", createAnalyticsRouter(prisma))
   app.use("/api/auth", createStudentAuthRouter(prisma))
   app.use("/api/user", createUserRouter(prisma))
   app.use("/api/contact", createContactRouter(prisma))

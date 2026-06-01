@@ -10,16 +10,24 @@ import {
   createModeratorStudentCouncilRole,
   deleteModeratorStudentCouncil,
   deleteModeratorStudentCouncilRole,
+  fetchModeratorActivityLogs,
+  fetchModeratorAnalyticsOverview,
+  fetchModeratorQueue,
+  fetchModeratorTopUniversities,
   fetchStudentCouncils,
   fetchUniversities,
   loginAdmin,
   saveModeratorProfile,
+  sendModeratorAnnouncement,
+  updateModeratorCommentStatus,
+  updateModeratorPostStatus,
   updateModeratorUniversityImages,
   updateModeratorStudentCouncil,
   updateModeratorStudentCouncilRole,
   type StudentCouncilInput,
   type StudentCouncilRoleInput,
   type UniversityImageInput,
+  type ModeratorQueue,
 } from '@/lib/api'
 import {
   createNextId,
@@ -46,7 +54,7 @@ import {
   setModeratorSession,
 } from '@/lib/moderatorAuth'
 
-type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils'
+type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils' | 'platform'
 
 const tabs: { id: ModeratorTab; label: string }[] = [
   { id: 'news', label: 'News' },
@@ -54,6 +62,7 @@ const tabs: { id: ModeratorTab; label: string }[] = [
   { id: 'qa', label: 'Q&A' },
   { id: 'members', label: 'Society Members' },
   { id: 'student-councils', label: 'Student Councils' },
+  { id: 'platform', label: 'Platform Ops' },
 ]
 
 const inputClass = 'w-full bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal'
@@ -251,6 +260,11 @@ export default function Moderator() {
   const [memberForm, setMemberForm] = useState<SocietyMember>(blankMember)
   const [universities, setUniversities] = useState<University[]>([])
   const [studentCouncils, setStudentCouncils] = useState<StudentCouncil[]>([])
+  const [moderatorQueue, setModeratorQueue] = useState<ModeratorQueue | null>(null)
+  const [analyticsOverview, setAnalyticsOverview] = useState<Record<string, unknown> | null>(null)
+  const [topUniversities, setTopUniversities] = useState<{ university?: { id: number; name: string; city: string }; count: number }[]>([])
+  const [activityLogs, setActivityLogs] = useState<unknown[]>([])
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', message: '', priority: 'normal', linkUrl: '/dashboard' })
   const [councilForm, setCouncilForm] = useState<StudentCouncilInput>(blankCouncilForm)
   const [roleForm, setRoleForm] = useState<StudentCouncilRoleInput>(blankRoleForm)
   const [imageForm, setImageForm] = useState<UniversityImageInput>(blankImageForm)
@@ -271,10 +285,6 @@ export default function Moderator() {
     fetchUniversities().then(setUniversities).catch(() => undefined)
     fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
   }, [session?.token])
-
-  if (!session) {
-    return <AuthCard onSignedIn={() => setSession(getModeratorSession())} />
-  }
 
   const signOut = () => {
     logoutModerator()
@@ -321,6 +331,28 @@ export default function Moderator() {
     if (session?.token) {
       fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
     }
+  }
+
+  const refreshPlatformOps = () => {
+    if (!session?.token) return
+
+    fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => undefined)
+    fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => undefined)
+    fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => undefined)
+    fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => undefined)
+  }
+
+  useEffect(() => {
+    if (tab === 'platform' && session?.token) {
+      fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => undefined)
+      fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => undefined)
+      fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => undefined)
+      fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => undefined)
+    }
+  }, [tab, session?.token])
+
+  if (!session) {
+    return <AuthCard onSignedIn={() => setSession(getModeratorSession())} />
   }
 
   const saveCouncil = () => {
@@ -438,6 +470,36 @@ export default function Moderator() {
     saveModeratorProfile(session.token, profileForm)
       .then(() => setStatus('Moderator profile saved.'))
       .catch(() => setStatus('Could not save moderator profile.'))
+  }
+
+  const moderatePost = (id: number, data: { status?: string; pinned?: boolean; officialAnswer?: string | null }) => {
+    if (!session?.token) return
+    updateModeratorPostStatus(session.token, id, data)
+      .then(() => {
+        refreshPlatformOps()
+        setStatus('Post moderation saved.')
+      })
+      .catch(() => setStatus('Could not moderate post.'))
+  }
+
+  const moderateComment = (id: number, data: { status?: string; official?: boolean }) => {
+    if (!session?.token) return
+    updateModeratorCommentStatus(session.token, id, data)
+      .then(() => {
+        refreshPlatformOps()
+        setStatus('Comment moderation saved.')
+      })
+      .catch(() => setStatus('Could not moderate comment.'))
+  }
+
+  const sendAnnouncement = () => {
+    if (!session?.token) return
+    sendModeratorAnnouncement(session.token, announcementForm)
+      .then(() => {
+        setAnnouncementForm({ title: '', message: '', priority: 'normal', linkUrl: '/dashboard' })
+        setStatus('Announcement sent.')
+      })
+      .catch(() => setStatus('Could not send announcement.'))
   }
 
   return (
@@ -592,7 +654,181 @@ export default function Moderator() {
           onUpdateRole={updateRoleStatus}
         />
       )}
+
+      {tab === 'platform' && (
+        <PlatformOpsPanel
+          queue={moderatorQueue}
+          analyticsOverview={analyticsOverview}
+          topUniversities={topUniversities}
+          activityLogs={activityLogs}
+          announcementForm={announcementForm}
+          setAnnouncementForm={setAnnouncementForm}
+          onRefresh={refreshPlatformOps}
+          onModeratePost={moderatePost}
+          onModerateComment={moderateComment}
+          onSendAnnouncement={sendAnnouncement}
+        />
+      )}
     </div>
+  )
+}
+
+function PlatformOpsPanel({
+  queue,
+  analyticsOverview,
+  topUniversities,
+  activityLogs,
+  announcementForm,
+  setAnnouncementForm,
+  onRefresh,
+  onModeratePost,
+  onModerateComment,
+  onSendAnnouncement,
+}: {
+  queue: ModeratorQueue | null
+  analyticsOverview: Record<string, unknown> | null
+  topUniversities: { university?: { id: number; name: string; city: string }; count: number }[]
+  activityLogs: unknown[]
+  announcementForm: { title: string; message: string; priority: string; linkUrl: string }
+  setAnnouncementForm: (form: { title: string; message: string; priority: string; linkUrl: string }) => void
+  onRefresh: () => void
+  onModeratePost: (id: number, data: { status?: string; pinned?: boolean; officialAnswer?: string | null }) => void
+  onModerateComment: (id: number, data: { status?: string; official?: boolean }) => void
+  onSendAnnouncement: () => void
+}) {
+  const overviewItems: Array<[string, unknown]> = [
+    ['Events', analyticsOverview?.events],
+    ['Users', analyticsOverview?.users],
+    ['Community posts', analyticsOverview?.posts],
+    ['Pending reports', queue?.reports?.length || 0],
+  ]
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <section className="space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-navy">Advanced moderation</h2>
+          <button onClick={onRefresh} className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light">Refresh queue</button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          {overviewItems.map(([label, value]) => (
+            <article key={label} className="bg-surface rounded-2xl shadow-sm p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
+              <p className="mt-2 text-2xl font-bold text-navy">{String(value ?? 0)}</p>
+            </article>
+          ))}
+        </div>
+
+        <QueueSection title="Pending posts" empty="No pending posts.">
+          {queue?.pendingPosts?.map((post) => (
+            <QueueRow key={post.id} title={post.title} meta={`${post.category} - ${post.author?.name || 'Student'}`}>
+              <button onClick={() => onModeratePost(post.id, { status: 'published' })} className="text-xs text-teal hover:underline">Approve</button>
+              <button onClick={() => onModeratePost(post.id, { status: 'hidden' })} className="text-xs text-muted hover:text-teal">Hide</button>
+              <button onClick={() => onModeratePost(post.id, { pinned: !post.pinned })} className="text-xs text-muted hover:text-teal">{post.pinned ? 'Unpin' : 'Pin'}</button>
+            </QueueRow>
+          ))}
+        </QueueSection>
+
+        <QueueSection title="Reported posts" empty="No reported posts.">
+          {queue?.reportedPosts?.map((post) => (
+            <QueueRow key={post.id} title={post.title} meta={`${post.category} - ${post.author?.name || 'Student'}`}>
+              <button onClick={() => onModeratePost(post.id, { status: 'published' })} className="text-xs text-teal hover:underline">Restore</button>
+              <button onClick={() => onModeratePost(post.id, { status: 'hidden' })} className="text-xs text-muted hover:text-teal">Hide</button>
+              <button onClick={() => onModeratePost(post.id, { status: 'removed' })} className="text-xs text-muted hover:text-teal">Remove</button>
+            </QueueRow>
+          ))}
+        </QueueSection>
+
+        <QueueSection title="Reported comments" empty="No reported comments.">
+          {queue?.reportedComments?.map((comment) => (
+            <QueueRow key={comment.id} title={comment.content.slice(0, 120)} meta={`Post #${comment.postId}`}>
+              <button onClick={() => onModerateComment(comment.id, { status: 'published' })} className="text-xs text-teal hover:underline">Restore</button>
+              <button onClick={() => onModerateComment(comment.id, { status: 'hidden' })} className="text-xs text-muted hover:text-teal">Hide</button>
+              <button onClick={() => onModerateComment(comment.id, { official: true })} className="text-xs text-muted hover:text-teal">Official</button>
+            </QueueRow>
+          ))}
+        </QueueSection>
+
+        <QueueSection title="Verification queue" empty="Nothing needs verification.">
+          {queue?.verificationQueue?.map((item) => (
+            <QueueRow key={item.id} title={item.name} meta={item.campusImageUrl ? 'Image present, needs verification date' : 'Missing campus image'}>
+              <span className="text-xs text-muted">Use Student Councils tab image editor</span>
+            </QueueRow>
+          ))}
+        </QueueSection>
+      </section>
+
+      <aside className="space-y-6">
+        <section className="bg-surface rounded-2xl shadow-sm p-5">
+          <h2 className="text-lg font-bold text-navy">Announcement</h2>
+          <div className="mt-3 grid gap-3">
+            <input value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} placeholder="Title" className={inputClass} />
+            <textarea value={announcementForm.message} onChange={(event) => setAnnouncementForm({ ...announcementForm, message: event.target.value })} placeholder="Message" rows={4} className={inputClass} />
+            <select value={announcementForm.priority} onChange={(event) => setAnnouncementForm({ ...announcementForm, priority: event.target.value })} className={inputClass}>
+              {['low', 'normal', 'high', 'urgent'].map((priority) => <option key={priority}>{priority}</option>)}
+            </select>
+            <input value={announcementForm.linkUrl} onChange={(event) => setAnnouncementForm({ ...announcementForm, linkUrl: event.target.value })} placeholder="/dashboard" className={inputClass} />
+            <button onClick={onSendAnnouncement} className="rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white hover:bg-teal-light">Send to users</button>
+          </div>
+        </section>
+
+        <section className="bg-surface rounded-2xl shadow-sm p-5">
+          <h2 className="text-lg font-bold text-navy">Top universities</h2>
+          <div className="mt-3 space-y-2">
+            {topUniversities.length === 0 && <p className="text-sm text-muted">Analytics will appear after events are tracked.</p>}
+            {topUniversities.map((item) => (
+              <div key={item.university?.id || item.count} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-navy">{item.university?.name || 'Unknown university'}</span>
+                <span className="text-muted">{item.count}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-surface rounded-2xl shadow-sm p-5">
+          <h2 className="text-lg font-bold text-navy">Activity logs</h2>
+          <div className="mt-3 space-y-2">
+            {activityLogs.slice(0, 8).map((entry, index) => {
+              const log = entry as { actionType?: string; targetEntity?: string; createdAt?: string }
+              return (
+                <p key={`${log.actionType}-${index}`} className="text-xs text-muted">
+                  {log.actionType || 'activity'} - {log.targetEntity || 'target'} {log.createdAt ? new Date(log.createdAt).toLocaleString() : ''}
+                </p>
+              )
+            })}
+            {activityLogs.length === 0 && <p className="text-sm text-muted">No activity logs yet.</p>}
+          </div>
+        </section>
+      </aside>
+    </div>
+  )
+}
+
+function QueueSection({ title, empty, children }: { title: string; empty: string; children: ReactNode }) {
+  const hasChildren = Array.isArray(children) ? children.some(Boolean) : Boolean(children)
+
+  return (
+    <section className="bg-surface rounded-2xl shadow-sm p-5">
+      <h3 className="text-lg font-bold text-navy">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {hasChildren ? children : <p className="text-sm text-muted">{empty}</p>}
+      </div>
+    </section>
+  )
+}
+
+function QueueRow({ title, meta, children }: { title: string; meta: string; children: ReactNode }) {
+  return (
+    <article className="rounded-xl border border-gray-100 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-navy line-clamp-1">{title}</p>
+          <p className="mt-1 text-xs text-muted">{meta}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">{children}</div>
+      </div>
+    </article>
   )
 }
 

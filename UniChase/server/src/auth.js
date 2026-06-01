@@ -13,6 +13,7 @@ export function signAdminToken(admin) {
       sub: String(admin.id),
       email: admin.email,
       role: "admin",
+      adminRole: admin.role || "admin",
     },
     getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || "8h" },
@@ -54,7 +55,7 @@ export function requireAdmin(prisma) {
 
     const admin = await prisma.adminUser.findUnique({
       where: { id: Number(payload.sub) },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true },
     })
 
     if (!admin) {

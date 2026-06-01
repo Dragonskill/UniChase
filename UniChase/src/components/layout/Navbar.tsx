@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Moon, Sun } from 'lucide-react'
+import { Bell, Moon, Sun } from 'lucide-react'
 import LoginDropdown from './LoginDropdown'
 import GlowLetters from '@/components/ui/GlowLetters'
+import { fetchNotifications, fetchUnreadNotificationCount, markAllNotificationsRead, type NotificationItem } from '@/lib/api'
 import { useI18n, type Language } from '@/lib/i18n'
 import { authChangeEvent, getStoredUser, getToken } from '@/lib/storage'
 import { getStoredTheme, setStoredTheme, themeChangeEvent, type ThemeMode } from '@/lib/theme'
@@ -23,10 +24,18 @@ export default function Navbar() {
   const [query, setQuery] = useState('')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const [signedIn, setSignedIn] = useState(() => Boolean(getToken() && getStoredUser()))
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
 
   useEffect(() => {
     function syncAuth() {
-      setSignedIn(Boolean(getToken() && getStoredUser()))
+      const hasSession = Boolean(getToken() && getStoredUser())
+      setSignedIn(hasSession)
+      if (!hasSession) {
+        setUnreadCount(0)
+        setNotifications([])
+      }
     }
 
     window.addEventListener(authChangeEvent, syncAuth)
@@ -49,6 +58,26 @@ export default function Navbar() {
       window.removeEventListener('storage', syncTheme)
     }
   }, [])
+
+  useEffect(() => {
+    const token = getToken()
+    if (!token || !signedIn) {
+      return
+    }
+
+    fetchUnreadNotificationCount(token).then(setUnreadCount).catch(() => undefined)
+    fetchNotifications(token).then((items) => setNotifications(items.slice(0, 5))).catch(() => undefined)
+  }, [signedIn])
+
+  const readAllNotifications = () => {
+    const token = getToken()
+    if (!token) return
+
+    markAllNotificationsRead(token).then(() => {
+      setUnreadCount(0)
+      setNotifications((items) => items.map((item) => ({ ...item, isRead: true })))
+    }).catch(() => undefined)
+  }
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
@@ -125,6 +154,52 @@ export default function Navbar() {
 
           <div className="hidden sm:block">{themeToggle}</div>
 
+          {signedIn && (
+            <div className="relative hidden sm:block">
+              <button
+                type="button"
+                onClick={() => setNotificationOpen((current) => !current)}
+                aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-cream text-muted hover:text-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+              >
+                <Bell className="h-4 w-4" aria-hidden="true" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-teal px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notificationOpen && (
+                <div className="absolute right-0 mt-3 w-80 rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-navy">Notifications</p>
+                    <button type="button" onClick={readAllNotifications} className="text-xs text-teal hover:underline">Mark all read</button>
+                  </div>
+                  <div className="max-h-72 space-y-2 overflow-auto">
+                    {notifications.length === 0 && <p className="px-2 py-4 text-sm text-muted">No notifications yet.</p>}
+                    {notifications.map((item) => (
+                      <Link
+                        key={item.id}
+                        to={item.linkUrl || '/notifications'}
+                        onClick={() => setNotificationOpen(false)}
+                        className="block rounded-lg bg-cream px-3 py-2 text-sm hover:bg-cream-dark"
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-navy">{item.title}</span>
+                          {!item.isRead && <span className="h-2 w-2 rounded-full bg-teal" aria-label="Unread" />}
+                        </span>
+                        <span className="mt-1 line-clamp-2 text-xs text-muted">{item.message}</span>
+                      </Link>
+                    ))}
+                  </div>
+                  <Link to="/notifications" onClick={() => setNotificationOpen(false)} className="mt-3 block text-center text-xs font-semibold text-teal hover:underline">
+                    View all
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Auth - desktop */}
           <div className="hidden md:block"><LoginDropdown /></div>
           <Link to="/dashboard" className="hidden lg:inline text-sm font-medium text-muted hover:text-teal transition-colors">{t('dashboard')}</Link>
@@ -150,6 +225,11 @@ export default function Navbar() {
           <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="text-sm font-medium text-ink hover:text-teal">
             {t('dashboard')}
           </Link>
+          {signedIn && (
+            <Link to="/notifications" onClick={() => setMenuOpen(false)} className="text-sm font-medium text-ink hover:text-teal">
+              Notifications{unreadCount > 0 ? ` (${unreadCount})` : ''}
+            </Link>
+          )}
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}

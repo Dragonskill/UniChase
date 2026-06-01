@@ -374,6 +374,220 @@ export const moderatorProfileSchema = z
     message: "At least one field is required for update",
   })
 
+export const communityCategories = [
+  "Admissions",
+  "Visa",
+  "Dormitory",
+  "Life in Korea",
+  "University Reviews",
+  "Program Questions",
+  "Korean Language",
+  "Jobs / Internships",
+  "Student Council",
+  "Documents",
+  "Deadlines",
+  "General Questions",
+]
+
+const communityStatus = z.enum(["published", "pending", "hidden", "reported", "removed"])
+const commentStatus = z.enum(["published", "pending", "hidden", "reported", "removed"])
+const reportReason = z.enum(["spam", "harassment", "misinformation", "unsafe", "off-topic", "other"])
+const notificationPriority = z.enum(["low", "normal", "high", "urgent"])
+const applicationStatus = z.enum([
+  "Interested",
+  "Preparing Documents",
+  "Ready to Apply",
+  "Applied",
+  "Waiting for Result",
+  "Interview Scheduled",
+  "Accepted",
+  "Rejected",
+  "Deferred",
+  "Enrolled",
+  "Withdrawn",
+])
+const documentStatus = z.enum(["missing", "preparing", "ready", "submitted", "expired"])
+const calendarStatus = z.enum(["upcoming", "completed", "overdue", "cancelled"])
+const calendarEventType = z.enum([
+  "application_deadline",
+  "roadmap_task",
+  "document_deadline",
+  "visa_deadline",
+  "interview",
+  "reminder",
+  "custom",
+])
+
+export const communityPostCreateSchema = z.object({
+  title: cleanString(180),
+  content: cleanString(8000),
+  category: z.enum(communityCategories),
+  universityId: z.coerce.number().int().positive().nullable().optional(),
+  relatedProgram: nullableString(180),
+  tags: z.array(cleanString(40)).max(10).default([]),
+})
+
+export const communityPostUpdateSchema = communityPostCreateSchema
+  .extend({
+    status: communityStatus.optional(),
+    pinned: z.boolean().optional(),
+    officialAnswer: nullableString(4000),
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one post field is required",
+  })
+
+export const communityCommentCreateSchema = z.object({
+  content: cleanString(4000),
+  parentCommentId: z.coerce.number().int().positive().nullable().optional(),
+})
+
+export const communityCommentUpdateSchema = z
+  .object({
+    content: cleanString(4000).optional(),
+    status: commentStatus.optional(),
+    official: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one comment field is required",
+  })
+
+export const communityReportSchema = z.object({
+  reason: reportReason.default("other"),
+  details: nullableString(2000),
+  commentId: z.coerce.number().int().positive().nullable().optional(),
+})
+
+export const moderationStatusSchema = z
+  .object({
+    status: z.enum(["published", "pending", "hidden", "reported", "removed", "approved", "rejected", "active", "inactive"]),
+    pinned: z.boolean().optional(),
+    official: z.boolean().optional(),
+    officialAnswer: nullableString(4000),
+    note: nullableString(2000),
+  })
+  .partial({ pinned: true, official: true, officialAnswer: true, note: true })
+
+export const internalNoteSchema = z.object({
+  targetEntity: cleanString(80),
+  targetEntityId: z.coerce.number().int().positive().nullable().optional(),
+  note: cleanString(3000),
+})
+
+export const moderatorAnnouncementSchema = z.object({
+  title: cleanString(180),
+  message: cleanString(3000),
+  type: cleanString(80).default("moderator_announcement"),
+  priority: notificationPriority.default("normal"),
+  linkUrl: nullableString(500),
+  userIds: z.array(z.coerce.number().int().positive()).max(500).optional(),
+})
+
+export const moderatorRoleSchema = z.object({
+  role: z.enum(["admin", "moderator", "university_editor", "content_editor", "community_moderator"]),
+})
+
+export const analyticsEventSchema = z.object({
+  userId: z.coerce.number().int().positive().nullable().optional(),
+  sessionId: nullableString(120),
+  eventType: cleanString(80),
+  entityType: nullableString(80),
+  entityId: z.coerce.number().int().positive().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+})
+
+export const onboardingSchema = z.object({
+  desiredMajor: nullableString(140),
+  degreeLevel: nullableString(80),
+  preferredCity: nullableString(120),
+  languagePreference: nullableString(80),
+  budgetMin: nullableInt,
+  budgetMax: nullableInt,
+  qsRankMin: nullableInt,
+  qsRankMax: nullableInt,
+  dormitoryRequired: nullableBoolean,
+  scholarshipPreference: nullableString(80),
+  targetIntake: nullableString(80),
+  educationLevel: nullableString(120),
+  preparationStage: nullableString(120),
+  nationality: nullableString(120),
+  testStatus: nullableString(180),
+  onboardingCompleted: z.boolean().default(false),
+})
+
+export const onboardingPatchSchema = onboardingSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one onboarding field is required",
+})
+
+export const applicationCreateSchema = z.object({
+  universityId: z.coerce.number().int().positive(),
+  programId: nullableString(180),
+  status: applicationStatus.default("Interested"),
+  intake: nullableString(80),
+  applicationDeadline: nullableDate,
+  submittedDate: nullableDate,
+  resultDate: nullableDate,
+  notes: nullableString(3000),
+  priority: z.enum(["low", "normal", "high"]).default("normal"),
+})
+
+export const applicationUpdateSchema = applicationCreateSchema
+  .omit({ universityId: true })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one application field is required",
+  })
+
+export const userDocumentCreateSchema = z.object({
+  applicationId: z.coerce.number().int().positive().nullable().optional(),
+  checklistItemId: z.coerce.number().int().positive().nullable().optional(),
+  documentType: z.enum([
+    "Passport",
+    "Transcript",
+    "Diploma",
+    "Recommendation Letter",
+    "Personal Statement",
+    "Language Certificate",
+    "Financial Proof",
+    "ID Photo",
+    "Application Form",
+    "Portfolio",
+    "Visa Documents",
+    "Other",
+  ]),
+  title: cleanString(180),
+  status: documentStatus.default("missing"),
+  fileName: nullableString(240),
+  fileType: nullableString(120),
+  fileSize: nullableInt,
+  expirationDate: nullableDate,
+  notes: nullableString(2000),
+})
+
+export const userDocumentUpdateSchema = userDocumentCreateSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one document field is required",
+})
+
+export const calendarEventCreateSchema = z.object({
+  title: cleanString(180),
+  description: nullableString(2000),
+  eventType: calendarEventType.default("custom"),
+  startDate: z.coerce.date(),
+  endDate: nullableDate,
+  allDay: z.boolean().default(true),
+  universityId: z.coerce.number().int().positive().nullable().optional(),
+  programId: nullableString(180),
+  applicationId: z.coerce.number().int().positive().nullable().optional(),
+  checklistItemId: z.coerce.number().int().positive().nullable().optional(),
+  roadmapStepId: nullableString(120),
+  status: calendarStatus.default("upcoming"),
+})
+
+export const calendarEventUpdateSchema = calendarEventCreateSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one calendar field is required",
+})
+
 function zodIssuesToDetails(error) {
   return error.issues.map((issue) => ({
     path: issue.path.join("."),
