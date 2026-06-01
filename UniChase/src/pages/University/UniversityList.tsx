@@ -416,13 +416,13 @@ function UniversityList() {
         initial={reduceMotion ? false : { opacity: 0.94 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
-        className="card-pop grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6"
+        className="card-pop university-card-grid"
       >
         {isLoading &&
           Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="rounded-2xl overflow-hidden bg-white shadow-sm animate-pulse">
-              <div className="h-44 bg-cream-dark" />
-              <div className="p-5">
+            <div key={index} className="university-card-shell bg-white shadow-sm animate-pulse">
+              <div className="university-card-media bg-cream-dark" />
+              <div className="flex min-h-0 flex-1 flex-col p-5">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-cream-dark" />
                   <div className="flex-1 space-y-2">
@@ -432,6 +432,7 @@ function UniversityList() {
                 </div>
                 <div className="mt-5 h-3 w-full rounded bg-cream-dark" />
                 <div className="mt-3 h-3 w-5/6 rounded bg-cream-dark" />
+                <div className="mt-auto h-4 w-24 rounded bg-cream-dark" />
               </div>
             </div>
           ))}
