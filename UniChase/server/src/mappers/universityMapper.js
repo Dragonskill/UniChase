@@ -1,7 +1,8 @@
 export function mapUniversityForClient(university) {
   const deadlineStatus = getDeadlineStatus(university)
-  const image = university.imageUrl || buildPlaceholderImage(university)
+  const image = university.campusImageUrl || university.imageUrl || buildPlaceholderImage(university)
   const logo = university.logoUrl || buildPlaceholderLogo(university)
+  const imageAlt = university.imageAlt || `${university.name} campus image`
 
   return {
     id: university.id,
@@ -27,6 +28,10 @@ export function mapUniversityForClient(university) {
     officialWebsite: university.officialWebsite,
     image,
     imageUrl: university.imageUrl,
+    campusImageUrl: university.campusImageUrl,
+    imageAlt,
+    imageSourceUrl: university.imageSourceUrl,
+    imageLastVerifiedAt: formatDate(university.imageLastVerifiedAt),
     logo,
     logoUrl: university.logoUrl,
     description: university.description,

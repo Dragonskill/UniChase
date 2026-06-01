@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import type { University } from "@/data/universities"
+import UniversityImage from "@/components/ui/UniversityImage"
 
 type Props = {
   uni: University
@@ -21,15 +22,16 @@ function UniversityCard({
   return (
     <Link
       to={`/universities/${uni.slug || uni.id}`}
-      className="block group rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:shadow-lg hover:-translate-y-1"
+      className="block h-full group rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:shadow-lg hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
     >
-      {/* Banner image + Follow button */}
-      <div className="relative">
-        <img
+      <article className="flex h-full min-h-[545px] flex-col">
+      <div className="relative aspect-[16/9] bg-cream-dark">
+        <UniversityImage
           src={uni.image}
-          alt={uni.name}
-          loading="lazy"
-          className="h-44 w-full object-cover"
+          alt={uni.imageAlt || `${uni.name} campus image`}
+          fallbackLabel={uni.name}
+          color={uni.mainColor}
+          className="h-full w-full object-cover"
         />
         <button
           onClick={(e) => {
@@ -42,19 +44,21 @@ function UniversityCard({
         </button>
       </div>
 
-      {/* Body */}
-      <div className="p-5">
-        {/* Logo + name + location */}
-        <div className="flex items-center gap-3">
-          <img
+      <div className="flex flex-1 flex-col p-5">
+        <div className="grid min-h-[74px] grid-cols-[48px_minmax(0,1fr)] items-start gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cream border border-gray-100">
+            <UniversityImage
             src={uni.logo}
             alt={`${uni.name} logo`}
-            loading="lazy"
+            fallbackLabel={uni.name}
+            color={uni.mainColor}
+            kind="logo"
             className="h-10 w-10 object-contain"
           />
-          <div>
+          </div>
+          <div className="min-w-0">
             <h3
-              className="text-lg font-bold leading-tight"
+              className="min-h-[44px] text-lg font-bold leading-tight line-clamp-2"
               style={{ color: uni.mainColor }}
             >
               {uni.name}
@@ -64,7 +68,7 @@ function UniversityCard({
         </div>
 
         {/* QS + acceptance rate */}
-        <div className="mt-4 flex flex-col gap-2 border-b border-gray-100 pb-4">
+        <div className="mt-4 min-h-[78px] flex flex-col gap-2 border-b border-gray-100 pb-4">
           <div className="flex items-center gap-2">
             <img
               src="https://files.bpcontent.cloud/2025/06/20/06/20250620064449-IG082B2O.png"
@@ -76,17 +80,19 @@ function UniversityCard({
           <span className="text-sm text-gray-700">
             Acceptance rate: {uni.acceptanceRate || "Not available"}
           </span>
+          <span className="w-fit rounded-full border border-gray-200 bg-cream px-2.5 py-0.5 text-xs text-muted">
+            {uni.imageLastVerifiedAt || uni.lastVerifiedAt ? "Verified" : "Needs verification"}
+          </span>
         </div>
 
-        {/* Description */}
-        <p className="mt-4 text-sm text-gray-600 line-clamp-3">
+        <p className="mt-4 min-h-[60px] text-sm text-gray-600 line-clamp-3">
           {uni.description}
         </p>
 
         {onToggleCompare && (
           <label
             onClick={(e) => e.stopPropagation()}
-            className="mt-4 flex items-center gap-2 text-sm text-gray-700"
+            className="mt-auto flex items-center gap-2 pt-4 text-sm text-gray-700"
           >
             <input
               type="checkbox"
@@ -102,6 +108,7 @@ function UniversityCard({
           </label>
         )}
       </div>
+      </article>
     </Link>
   )
 }

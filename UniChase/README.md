@@ -12,6 +12,9 @@ The public visual design is intentionally preserved. New functionality reuses th
 - University comparison for 2 to 4 universities
 - Save/favorite universities with localStorage and optional account sync
 - Student council profiles and role/member placeholders with source URLs and verification status
+- Light/dark theme toggle with localStorage persistence and first-visit system preference support
+- University image metadata for campus photos, logos, alt text, source URLs, image verification dates, and generated fallbacks
+- Equal-height university cards with fixed image ratio, lazy image loading, broken-image fallback handling, result count, sorting, share links, breadcrumbs, recently viewed universities, and back-to-top navigation
 - Student account register/login/logout with hashed passwords and JWTs
 - Student dashboard with saved universities, comparisons, checklist, deadlines, recommendations link, and profile
 - Application deadline tracking inside university data and dashboard reminders
@@ -22,6 +25,7 @@ The public visual design is intentionally preserved. New functionality reuses th
 - Interface language switcher for English, Korean, Russian, and Uzbek labels
 - Contact/support form stored in the database
 - Moderator tools for backend admins to add, edit, verify, and delete student council records and council roles
+- Moderator image tools for campus image URL, logo URL, alt text, image source URL, and verification dates
 
 Excluded by design:
 
@@ -118,6 +122,16 @@ Seed data includes every South Korean institution in the QS World University Ran
 
 The seed stores QS rank labels, source URLs, verification timestamps, and student council placeholders. It intentionally does not invent real student council people; role/member records start as placeholders marked `needs verification` until a moderator verifies public sources or adds known information.
 
+University image data uses official university pages where available and reliable public Wikimedia/Wikipedia source pages for some logos or campus images. When a verified image is missing or a URL fails to load, the frontend falls back to a generated UniChase campus/logo placeholder so cards and detail pages do not shift or break.
+
+New `University` image fields:
+
+- `campusImageUrl`
+- `logoUrl`
+- `imageAlt`
+- `imageSourceUrl`
+- `imageLastVerifiedAt`
+
 ## API Endpoints
 
 Public:
@@ -148,6 +162,7 @@ University query parameters:
 - `deadline`
 - `level`
 - `scholarship`, `hasScholarships`
+- `sort`: `qsRank`, `name`, `city`, `tuition`, or `recent`
 
 Student auth:
 
@@ -179,6 +194,7 @@ Moderator:
 
 - `POST /api/moderator/universities`
 - `PATCH /api/moderator/universities/:id`
+- `PATCH /api/moderator/universities/:id/images`
 - `POST /api/moderator/student-councils`
 - `PATCH /api/moderator/student-councils/:id`
 - `DELETE /api/moderator/student-councils/:id`
@@ -206,6 +222,14 @@ Clean university URLs are available at `/universities/:slug`, while legacy `/uni
 ## Language System
 
 The language switcher stores the selected language in localStorage and translates interface labels for English, Korean, Russian, and Uzbek. University content remains English unless translated university fields are added later.
+
+## Theme System
+
+The navbar includes an accessible light/dark mode toggle. The selected theme is stored in localStorage under `unichase.theme`; if no theme is saved, the app uses the operating system preference. Theme colors are driven by CSS variables so light mode stays close to the original UniChase design while dark mode adjusts surfaces, text, borders, form controls, cards, dropdowns, and moderator/dashboard pages.
+
+## Image Management
+
+Moderators can update university image data from the Student Councils moderator tab after selecting a university. Editable fields include campus image URL, logo URL, image alt text, image source URL, image verification date, and university verification date. URL and date fields are validated by the API, and public image rendering falls back automatically if a URL is missing or broken.
 
 ## Deployment
 
@@ -248,6 +272,10 @@ Manual checks used during development:
 - Expanded university detail pages
 - Student council detail sections and role verification badges
 - Moderator backend login plus student council create, update, and delete flows
+- Moderator university image edit flow
+- University sorting and result counts
+- Equal-height card rendering with image fallbacks
+- Light/dark theme toggle persistence
 - Contact form storage
 - Language switcher
 - Mobile layout

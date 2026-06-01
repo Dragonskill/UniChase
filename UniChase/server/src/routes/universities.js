@@ -2,6 +2,7 @@ import { Router } from "express"
 import { ApiError, asyncHandler } from "../errors.js"
 import { mapStudentCouncilForClient, mapUniversityForClient } from "../mappers/universityMapper.js"
 import {
+  buildUniversityOrder,
   buildUniversityWhere,
   filterUniversitiesInMemory,
   parsePositiveId,
@@ -9,7 +10,7 @@ import {
 import { parseCompareQuery, parseUniversityQuery, recommendationSchema, validateBody } from "../validation.js"
 import { scoreUniversities } from "../recommendations.js"
 
-const defaultOrder = [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "asc" }]
+const defaultOrder = buildUniversityOrder("qsRank")
 const universityInclude = {
   studentCouncil: { include: { roles: { orderBy: [{ status: "asc" }, { roleTitle: "asc" }] } } },
 }
@@ -21,7 +22,7 @@ export function createUniversityRouter(prisma) {
     const filters = parseUniversityQuery(req.query)
     const universities = await prisma.university.findMany({
       where: buildUniversityWhere(filters),
-      orderBy: defaultOrder,
+      orderBy: buildUniversityOrder(filters.sort),
       include: universityInclude,
     })
     const filteredUniversities = filterUniversitiesInMemory(universities, filters)

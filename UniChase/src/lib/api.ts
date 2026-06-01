@@ -324,6 +324,25 @@ export type StudentCouncilRoleInput = {
   sourceUrl?: string | null
 }
 
+export type UniversityImageInput = {
+  imageUrl?: string | null
+  campusImageUrl?: string | null
+  logoUrl?: string | null
+  imageAlt?: string | null
+  imageSourceUrl?: string | null
+  imageLastVerifiedAt?: string | null
+  lastVerifiedAt?: string | null
+}
+
+export async function updateModeratorUniversityImages(token: string, id: number, data: UniversityImageInput) {
+  const response = await apiFetchWithAuth<UniversityDetailResponse>(`/moderator/universities/${id}/images`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
 export async function createModeratorStudentCouncil(token: string, data: StudentCouncilInput) {
   const response = await apiFetchWithAuth<StudentCouncilResponse>("/moderator/student-councils", {
     token,

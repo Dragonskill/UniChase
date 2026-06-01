@@ -14,6 +14,7 @@ import {
   studentCouncilRoleUpdateSchema,
   studentCouncilUpdateSchema,
   universityCreateSchema,
+  universityImageUpdateSchema,
   universityUpdateSchema,
   validateBody,
 } from "../validation.js"
@@ -62,6 +63,20 @@ export function createModeratorRouter(prisma) {
   router.patch(
     "/universities/:id",
     validateBody(universityUpdateSchema),
+    asyncHandler(async (req, res) => {
+      const university = await prisma.university.update({
+        where: { id: parsePositiveId(req.params.id) },
+        data: req.body,
+        include: universityInclude,
+      })
+
+      res.json({ data: mapUniversityForClient(university) })
+    }),
+  )
+
+  router.patch(
+    "/universities/:id/images",
+    validateBody(universityImageUpdateSchema),
     asyncHandler(async (req, res) => {
       const university = await prisma.university.update({
         where: { id: parsePositiveId(req.params.id) },
