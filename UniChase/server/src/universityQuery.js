@@ -121,11 +121,24 @@ function matchesSearch(university, rawSearch) {
       university.country,
       university.description,
       university.rankingSourceNote,
+      university.studentCouncil?.name,
+      university.studentCouncil?.officialName,
+      university.studentCouncil?.description,
     ].some((value) => includesText(value, token)) ||
       arrayIncludes(university.programs, token) ||
       arrayIncludes(university.tags, token) ||
       arrayIncludes(university.languagesOfInstruction, token) ||
-      arrayIncludes(university.studyLevels, token),
+      arrayIncludes(university.studyLevels, token) ||
+      (university.studentCouncil?.roles || []).some(
+        (role) =>
+          [
+            role.roleTitle,
+            role.department,
+            role.description,
+            role.verificationStatus,
+            role.status,
+          ].some((value) => includesText(value, token)) || arrayIncludes(role.responsibilities, token),
+      ),
   )
 }
 

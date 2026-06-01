@@ -47,6 +47,20 @@ const nullableDate = z
   })
 
 const optionalPositiveInt = z.coerce.number().int().positive().optional()
+const nullableUrl = (maxLength) =>
+  z
+    .union([z.string().trim().url().max(maxLength), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === undefined) {
+        return null
+      }
+
+      return value
+    })
+
+const verificationStatus = z.enum(["verified", "manually added", "needs verification"])
+const roleStatus = z.enum(["active", "inactive", "pending"])
 
 const universityBaseShape = {
   name: cleanString(180),
@@ -56,12 +70,17 @@ const universityBaseShape = {
   country: cleanString(120),
   universityType: z.enum(["public", "private"]).default("private"),
   qsRanking: nullableInt,
+  qsRankingLabel: nullableString(40),
   qsRankingYear: nullableInt,
   rankingSourceNote: nullableString(800),
+  qsSourceUrl: nullableUrl(800),
+  sourceUrls: z.array(z.string().trim().url().max(800)).max(20).default([]),
+  lastVerifiedAt: nullableDate,
   officialWebsite: z.string().trim().url().max(500),
-  imageUrl: z.string().trim().url().max(800),
-  logoUrl: z.string().trim().url().max(800),
+  imageUrl: nullableUrl(800),
+  logoUrl: nullableUrl(800),
   description: cleanString(4000),
+  fullDescription: nullableString(8000),
   programs: stringArray.min(1),
   tuitionMin: nullableInt,
   tuitionMax: nullableInt,
@@ -69,8 +88,8 @@ const universityBaseShape = {
   admissionRequirements: stringArray,
   languagesOfInstruction: stringArray.min(1),
   scholarshipInfo: nullableString(2000),
-  hasScholarships: z.boolean(),
-  hasDormitory: z.boolean(),
+  hasScholarships: nullableBoolean,
+  hasDormitory: nullableBoolean,
   housingInfo: nullableString(2000),
   internationalStudentInfo: nullableString(2000),
   studentLife: nullableString(2000),
@@ -269,6 +288,71 @@ export const contactSchema = z.object({
   subject: cleanString(180),
   message: cleanString(4000),
 })
+
+export const studentCouncilCreateSchema = z.object({
+  universityId: z.coerce.number().int().positive(),
+  name: cleanString(180),
+  officialName: nullableString(220),
+  description: cleanString(4000),
+  websiteUrl: nullableUrl(800),
+  socialUrl: nullableUrl(800),
+  contactEmail: z
+    .union([z.string().trim().email().max(200), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? null : value)),
+  sourceUrl: nullableUrl(800),
+  verificationStatus: verificationStatus.default("needs verification"),
+  lastVerifiedAt: nullableDate,
+})
+
+export const studentCouncilUpdateSchema = studentCouncilCreateSchema
+  .omit({ universityId: true })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field is required for update",
+  })
+
+export const studentCouncilRoleCreateSchema = z.object({
+  councilId: z.coerce.number().int().positive(),
+  universityId: z.coerce.number().int().positive(),
+  adminUserId: z.coerce.number().int().positive().nullable().optional(),
+  displayName: nullableString(180),
+  roleTitle: cleanString(180),
+  department: nullableString(180),
+  description: nullableString(2000),
+  responsibilities: z.array(cleanString(220)).max(20).default([]),
+  contactEmail: z
+    .union([z.string().trim().email().max(200), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? null : value)),
+  contactUrl: nullableUrl(800),
+  avatarUrl: nullableUrl(800),
+  status: roleStatus.default("pending"),
+  verificationStatus: verificationStatus.default("needs verification"),
+  sourceUrl: nullableUrl(800),
+})
+
+export const studentCouncilRoleUpdateSchema = studentCouncilRoleCreateSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field is required for update",
+  })
+
+export const moderatorProfileSchema = z
+  .object({
+    displayName: cleanString(180),
+    description: nullableString(2000),
+    defaultRole: nullableString(180),
+    avatarUrl: nullableUrl(800),
+    contactEmail: z
+      .union([z.string().trim().email().max(200), z.literal(""), z.null()])
+      .optional()
+      .transform((value) => (value === "" || value === undefined ? null : value)),
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field is required for update",
+  })
 
 function zodIssuesToDetails(error) {
   return error.issues.map((issue) => ({

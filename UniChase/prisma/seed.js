@@ -6,52 +6,317 @@ dotenv.config({ quiet: true })
 
 const prisma = new PrismaClient()
 
+const lastVerifiedAt = new Date("2026-06-01T00:00:00.000Z")
+const qsSourceUrl = "https://www.topuniversities.com/qs-top-uni-wur"
+const koreaRankingSourceUrl = "https://truescho.com/en/rankings/country/kr"
 const rankingSourceNote =
-  "Development seed value for backend testing. Verify against the current QS source before production use."
+  "Verified against QS World University Rankings 2026 South Korea listings. Band labels are stored exactly for display; qsRanking stores the lower bound for sorting."
+const needsVerification = "needs verification"
 
-const defaultRequiredDocuments = [
-  "Application form",
-  "Academic transcripts",
-  "Passport copy",
-  "Language proficiency document where required",
-  "Personal statement or study plan",
+// Do not invent real student council people. These are role placeholders only.
+const placeholderCouncilRoles = [
+  {
+    roleTitle: "President",
+    responsibilities: ["Represent the student body", "Coordinate student council priorities"],
+  },
+  {
+    roleTitle: "Vice President",
+    responsibilities: ["Support council operations", "Coordinate cross-team follow-up"],
+  },
+  {
+    roleTitle: "International Student Representative",
+    responsibilities: ["Represent international student concerns", "Help route support and orientation feedback"],
+  },
+  {
+    roleTitle: "Academic Affairs Representative",
+    responsibilities: ["Gather academic feedback", "Coordinate academic policy communication"],
+  },
+  {
+    roleTitle: "Welfare Representative",
+    responsibilities: ["Monitor student welfare topics", "Support campus life issue escalation"],
+  },
 ]
 
-const defaultApplicationSteps = [
-  "Review program and eligibility requirements",
-  "Prepare documents and language records",
-  "Submit the online application",
-  "Track document screening or interview notices",
-  "Confirm admission and visa steps",
-]
-
-const studentLifeNote =
-  "Students can access clubs, campus events, academic advising, language support, and international student services."
-
-const deadlineTemplates = [
+const universities = [
   {
-    applicationOpenDate: "2026-03-01T00:00:00.000Z",
-    applicationDeadline: "2026-09-15T00:00:00.000Z",
-    scholarshipDeadline: "2026-08-15T00:00:00.000Z",
-    documentDeadline: "2026-09-22T00:00:00.000Z",
+    name: "Seoul National University",
+    koreanName: "서울대학교",
+    city: "Seoul",
+    universityType: "public",
+    qsRanking: 38,
+    qsRankingLabel: "#=38",
+    officialWebsite: "https://en.snu.ac.kr",
+    mainColor: "#15397F",
   },
   {
-    applicationOpenDate: "2026-03-01T00:00:00.000Z",
-    applicationDeadline: "2026-06-25T00:00:00.000Z",
-    scholarshipDeadline: "2026-06-10T00:00:00.000Z",
-    documentDeadline: "2026-06-30T00:00:00.000Z",
+    name: "Yonsei University",
+    koreanName: "연세대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 50,
+    qsRankingLabel: "#50",
+    officialWebsite: "https://www.yonsei.ac.kr/en_sc",
+    mainColor: "#0B24DF",
   },
   {
-    applicationOpenDate: "2026-02-01T00:00:00.000Z",
-    applicationDeadline: "2026-05-15T00:00:00.000Z",
-    scholarshipDeadline: "2026-05-01T00:00:00.000Z",
-    documentDeadline: "2026-05-22T00:00:00.000Z",
+    name: "Korea University",
+    koreanName: "고려대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 61,
+    qsRankingLabel: "#61",
+    officialWebsite: "https://www.korea.edu",
+    mainColor: "#CE1414",
   },
   {
-    applicationOpenDate: "2026-04-01T00:00:00.000Z",
-    applicationDeadline: "2026-11-20T00:00:00.000Z",
-    scholarshipDeadline: "2026-10-25T00:00:00.000Z",
-    documentDeadline: "2026-11-30T00:00:00.000Z",
+    name: "Pohang University of Science And Technology (POSTECH)",
+    koreanName: "포항공과대학교",
+    city: "Pohang",
+    universityType: "private",
+    qsRanking: 102,
+    qsRankingLabel: "#102",
+    officialWebsite: "https://www.postech.ac.kr/eng",
+    mainColor: "#C41230",
+  },
+  {
+    name: "Sungkyunkwan University (SKKU)",
+    koreanName: "성균관대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 126,
+    qsRankingLabel: "#=126",
+    officialWebsite: "https://www.skku.edu/eng",
+    mainColor: "#0B4EA2",
+  },
+  {
+    name: "Hanyang University",
+    koreanName: "한양대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 159,
+    qsRankingLabel: "#159",
+    officialWebsite: "https://www.hanyang.ac.kr/web/eng",
+    mainColor: "#004098",
+  },
+  {
+    name: "Ulsan National Institute of Science and Technology (UNIST)",
+    koreanName: "울산과학기술원",
+    city: "Ulsan",
+    universityType: "public",
+    qsRanking: 310,
+    qsRankingLabel: "#=310",
+    officialWebsite: "https://www.unist.ac.kr",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "Kyung Hee University",
+    koreanName: "경희대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 331,
+    qsRankingLabel: "#=331",
+    officialWebsite: "https://www.khu.ac.kr/eng",
+    mainColor: "#8B1D2C",
+  },
+  {
+    name: "Daegu Gyeongbuk Institute of Science and Technology (DGIST)",
+    koreanName: "대구경북과학기술원",
+    city: "Daegu",
+    universityType: "public",
+    qsRanking: 370,
+    qsRankingLabel: "#370",
+    officialWebsite: "https://www.dgist.ac.kr/eng/",
+    mainColor: "#0057A8",
+  },
+  {
+    name: "Gwangju Institute of Science and Technology (GIST)",
+    koreanName: "광주과학기술원",
+    city: "Gwangju",
+    universityType: "public",
+    qsRanking: 385,
+    qsRankingLabel: "#=385",
+    officialWebsite: "https://www.gist.ac.kr/en",
+    mainColor: "#003C71",
+  },
+  {
+    name: "Sejong University",
+    koreanName: "세종대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 392,
+    qsRankingLabel: "#=392",
+    officialWebsite: "https://en.sejong.ac.kr",
+    mainColor: "#B51F2A",
+  },
+  {
+    name: "Pusan National University",
+    koreanName: "부산대학교",
+    city: "Busan",
+    universityType: "public",
+    qsRanking: 473,
+    qsRankingLabel: "#=473",
+    officialWebsite: "https://www.pusan.ac.kr/eng/Main.do",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "Chung-Ang University (CAU)",
+    koreanName: "중앙대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 479,
+    qsRankingLabel: "#479",
+    officialWebsite: "https://neweng.cau.ac.kr",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "Ewha Womans University",
+    koreanName: "이화여자대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 504,
+    qsRankingLabel: "#=504",
+    officialWebsite: "https://www.ewha.ac.kr/ewhaen/index.do",
+    mainColor: "#00664F",
+  },
+  {
+    name: "Kyungpook National University",
+    koreanName: "경북대학교",
+    city: "Daegu",
+    universityType: "public",
+    qsRanking: 519,
+    qsRankingLabel: "#=519",
+    officialWebsite: "https://en.knu.ac.kr",
+    mainColor: "#C0002B",
+  },
+  {
+    name: "Sogang University",
+    koreanName: "서강대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 558,
+    qsRankingLabel: "#=558",
+    officialWebsite: "https://wwwe.sogang.ac.kr/wwwe/index_new.html",
+    mainColor: "#B5121B",
+  },
+  {
+    name: "Ajou University",
+    koreanName: "아주대학교",
+    city: "Suwon",
+    universityType: "private",
+    qsRanking: 563,
+    qsRankingLabel: "#=563",
+    officialWebsite: "https://www.ajou.ac.kr/en/index.do",
+    mainColor: "#0066B3",
+  },
+  {
+    name: "Dongguk University",
+    koreanName: "동국대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 618,
+    qsRankingLabel: "#=618",
+    officialWebsite: "https://www.dongguk.edu/eng",
+    mainColor: "#F08300",
+  },
+  {
+    name: "Inha University",
+    koreanName: "인하대학교",
+    city: "Incheon",
+    universityType: "private",
+    qsRanking: 643,
+    qsRankingLabel: "#=643",
+    officialWebsite: "https://eng.inha.ac.kr/eng/index.do",
+    mainColor: "#003876",
+  },
+  {
+    name: "Konkuk University",
+    koreanName: "건국대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 654,
+    qsRankingLabel: "#=654",
+    officialWebsite: "https://www.konkuk.ac.kr/eng",
+    mainColor: "#006B3F",
+  },
+  {
+    name: "HUFS - Hankuk (Korea) University of Foreign Studies",
+    koreanName: "한국외국어대학교",
+    city: "Seoul",
+    universityType: "private",
+    qsRanking: 680,
+    qsRankingLabel: "#=680",
+    officialWebsite: "https://www.hufs.ac.kr",
+    mainColor: "#003B79",
+  },
+  {
+    name: "Jeonbuk National University",
+    koreanName: "전북대학교",
+    city: "Jeonju",
+    universityType: "public",
+    qsRanking: 701,
+    qsRankingLabel: "#701-710",
+    officialWebsite: "https://www.jbnu.ac.kr/eng/",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "The Catholic University of Korea (CUK)",
+    koreanName: "가톨릭대학교",
+    city: "Gyeonggi",
+    universityType: "private",
+    qsRanking: 741,
+    qsRankingLabel: "#741-750",
+    officialWebsite: "https://www.catholic.ac.kr/english/",
+    mainColor: "#004C97",
+  },
+  {
+    name: "University of Ulsan",
+    koreanName: "울산대학교",
+    city: "Ulsan",
+    universityType: "private",
+    qsRanking: 801,
+    qsRankingLabel: "#801-850",
+    officialWebsite: "https://en.ulsan.ac.kr",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "Chungnam National University",
+    koreanName: "충남대학교",
+    city: "Daejeon",
+    universityType: "public",
+    qsRanking: 851,
+    qsRankingLabel: "#851-900",
+    officialWebsite: "https://plus.cnu.ac.kr/html/en/",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "University of Seoul",
+    koreanName: "서울시립대학교",
+    city: "Seoul",
+    universityType: "public",
+    qsRanking: 851,
+    qsRankingLabel: "#851-900",
+    officialWebsite: "https://english.uos.ac.kr",
+    mainColor: "#005EB8",
+  },
+  {
+    name: "Chonnam National University",
+    koreanName: "전남대학교",
+    city: "Gwangju",
+    universityType: "public",
+    qsRanking: 901,
+    qsRankingLabel: "#901-950",
+    officialWebsite: "https://global.jnu.ac.kr",
+    mainColor: "#005BAC",
+  },
+  {
+    name: "Yeungnam University",
+    koreanName: "영남대학교",
+    city: "Gyeongsan",
+    universityType: "private",
+    qsRanking: 901,
+    qsRankingLabel: "#901-950",
+    officialWebsite: "https://www.yu.ac.kr/english/",
+    mainColor: "#007A3D",
   },
 ]
 
@@ -62,392 +327,56 @@ function slugify(value) {
     .replace(/(^-|-$)/g, "")
 }
 
-function enrichUniversity(university, index) {
-  const deadlines = deadlineTemplates[index % deadlineTemplates.length]
-  const type = ["Seoul National University", "KAIST"].includes(university.name)
-    ? "public"
-    : "private"
+function universityData(university) {
+  const shortDescription = `${university.name} is a South Korean university listed in the QS World University Rankings 2026.`
 
   return {
     ...university,
     slug: slugify(university.name),
-    universityType: type,
-    hasDormitory: true,
-    studentLife: studentLifeNote,
-    requiredDocuments: defaultRequiredDocuments,
-    applicationSteps: defaultApplicationSteps,
-    studyLevels: ["undergraduate", "graduate"],
-    applicationOpenDate: new Date(deadlines.applicationOpenDate),
-    applicationDeadline: new Date(deadlines.applicationDeadline),
-    scholarshipDeadline: new Date(deadlines.scholarshipDeadline),
-    documentDeadline: new Date(deadlines.documentDeadline),
-    applicationDeadlines: {
-      ...university.applicationDeadlines,
-      applicationOpenDate: deadlines.applicationOpenDate,
-      applicationDeadline: deadlines.applicationDeadline,
-      scholarshipDeadline: deadlines.scholarshipDeadline,
-      documentDeadline: deadlines.documentDeadline,
-    },
+    country: "South Korea",
+    qsRankingYear: 2026,
+    rankingSourceNote,
+    qsSourceUrl,
+    sourceUrls: [qsSourceUrl, koreaRankingSourceUrl, university.officialWebsite],
+    lastVerifiedAt,
+    imageUrl: null,
+    logoUrl: null,
+    description: shortDescription,
+    fullDescription:
+      `${shortDescription} Admissions, tuition, student council, housing, and contact details should be verified from official university sources before publication.`,
+    programs: [],
+    tuitionMin: null,
+    tuitionMax: null,
+    tuitionCurrency: "KRW",
+    admissionRequirements: [],
+    languagesOfInstruction: [],
+    scholarshipInfo: null,
+    hasScholarships: null,
+    hasDormitory: null,
+    housingInfo: null,
+    internationalStudentInfo: null,
+    studentLife: null,
+    requiredDocuments: [],
+    applicationSteps: [],
+    studyLevels: [],
+    applicationDeadlines: null,
+    applicationOpenDate: null,
+    applicationDeadline: null,
+    scholarshipDeadline: null,
+    documentDeadline: null,
+    tags: ["QS World University Rankings 2026", university.city, university.universityType],
+    contactEmail: null,
+    contactPhone: null,
+    contactAddress: null,
+    acceptanceRate: null,
   }
 }
-
-const universities = [
-  {
-    name: "Seoul National University",
-    koreanName: "서울대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 29,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://en.snu.ac.kr",
-    imageUrl:
-      "https://en.snu.ac.kr/webdata/eng/gallery/thumb/fb9z62dzd5fz1dbz925z112zdf6z1b3zf30z304zfd.jpg",
-    logoUrl:
-      "https://upload.wikimedia.org/wikipedia/en/7/77/Seoul_national_university_emblem.svg",
-    description:
-      "SNU, founded in 1946, is one of the most prestigious universities in Korea.",
-    programs: ["Engineering", "Business", "Medicine", "Humanities", "Natural Sciences"],
-    tuitionMin: 2500000,
-    tuitionMax: 6200000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Completed online application",
-      "Academic transcripts",
-      "Language proficiency documentation",
-      "Statement of purpose",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "Merit and need-based scholarships are available for selected international students.",
-    hasScholarships: true,
-    housingInfo:
-      "On-campus residence halls are available, with priority policies that may vary by program.",
-    internationalStudentInfo:
-      "International student services support admissions, visas, orientation, and campus life.",
-    applicationDeadlines: {
-      spring: "Usually announced in the previous July or August",
-      fall: "Usually announced in the previous February or March",
-    },
-    tags: ["SKY", "Research", "Public", "Seoul"],
-    contactEmail: "intladm@snu.ac.kr",
-    contactPhone: "+82-2-880-6971",
-    contactAddress: "1 Gwanak-ro, Gwanak-gu, Seoul",
-    mainColor: "#15397F",
-    acceptanceRate: "12%",
-  },
-  {
-    name: "Korea University",
-    koreanName: "고려대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 66,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.korea.edu",
-    imageUrl:
-      "https://uploaded.kcampus.kr/1_5f0ebd83_623d_4f9c_9556_52c82dbd5a15_0de2b3e5f9.jpg",
-    logoUrl:
-      "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Korea_University_Global_Symbol.svg/960px-Korea_University_Global_Symbol.svg.png",
-    description:
-      "Korea University (KU) is one of South Korea's oldest and most prestigious universities.",
-    programs: ["Business", "Law", "Engineering", "Korean Studies", "Media"],
-    tuitionMin: 3600000,
-    tuitionMax: 7200000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Application form",
-      "Academic records",
-      "Passport copy",
-      "Language score or interview, depending on program",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "International admission scholarships and continuing student scholarships are offered competitively.",
-    hasScholarships: true,
-    housingInfo:
-      "University dormitory options are available near the Seoul campus for eligible students.",
-    internationalStudentInfo:
-      "The international office provides academic and student life support for degree-seeking students.",
-    applicationDeadlines: {
-      spring: "Check the annual international admission guide",
-      fall: "Check the annual international admission guide",
-    },
-    tags: ["SKY", "Private", "Seoul", "Business"],
-    contactEmail: "graduate1@korea.ac.kr",
-    contactPhone: "+82-2-3290-5156",
-    contactAddress: "145 Anam-ro, Seongbuk-gu, Seoul",
-    mainColor: "#ce1414",
-    acceptanceRate: "9%",
-  },
-  {
-    name: "Yonsei University",
-    koreanName: "연세대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 55,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.yonsei.ac.kr/en_sc",
-    imageUrl:
-      "https://www.yonsei.ac.kr/sites/sc/atchmnfl_mngr/imageSlide/73/temp_1750298387242100.jpg",
-    logoUrl:
-      "https://upload.wikimedia.org/wikipedia/en/thumb/9/95/YonseiUniversityEmblem.svg/1280px-YonseiUniversityEmblem.svg.png",
-    description:
-      "Yonsei University is one of South Korea's most prestigious universities and a member of the elite SKY universities.",
-    programs: ["Global Studies", "Business", "Medicine", "Engineering", "Liberal Arts"],
-    tuitionMin: 3600000,
-    tuitionMax: 7600000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Online application",
-      "High school or university transcripts",
-      "Personal statement",
-      "Language documents where required",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "Scholarships are available through admissions review and international student programs.",
-    hasScholarships: true,
-    housingInfo:
-      "On-campus housing includes international dormitory options with separate application rules.",
-    internationalStudentInfo:
-      "Yonsei provides dedicated services for international admissions, exchange, and campus adjustment.",
-    applicationDeadlines: {
-      spring: "Refer to the international admissions notice",
-      fall: "Refer to the international admissions notice",
-    },
-    tags: ["SKY", "Private", "Seoul", "Global"],
-    contactEmail: "iadmission@yonsei.ac.kr",
-    contactPhone: "+82-2-2123-4131",
-    contactAddress: "50 Yonsei-ro, Seodaemun-gu, Seoul",
-    mainColor: "#0b24df",
-    acceptanceRate: "6%",
-  },
-  {
-    name: "KAIST",
-    koreanName: "한국과학기술원",
-    city: "Daejeon",
-    country: "South Korea",
-    qsRanking: 53,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.kaist.ac.kr/en",
-    imageUrl: "https://ingiehonglab.org/wp-content/uploads/2025/09/KAIST.png",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/0/0a/KAIST_logo.svg",
-    description:
-      "KAIST is a leading science and technology university known for research, engineering, and innovation.",
-    programs: ["Computer Science", "Electrical Engineering", "Mechanical Engineering", "AI", "Bioengineering"],
-    tuitionMin: 3300000,
-    tuitionMax: 7000000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Online application",
-      "Recommendation letters",
-      "Academic transcripts",
-      "English proficiency documentation",
-    ],
-    languagesOfInstruction: ["English", "Korean"],
-    scholarshipInfo:
-      "Many admitted international students are considered for tuition support and stipends by program.",
-    hasScholarships: true,
-    housingInfo:
-      "Dormitory housing is commonly available for enrolled students at the Daejeon campus.",
-    internationalStudentInfo:
-      "KAIST supports international degree students through admissions, visa, housing, and academic services.",
-    applicationDeadlines: {
-      early: "Usually announced by admissions each cycle",
-      regular: "Usually announced by admissions each cycle",
-    },
-    tags: ["STEM", "Research", "Daejeon", "Technology"],
-    contactEmail: "advanced.adm@kaist.ac.kr",
-    contactPhone: "+82-42-350-4803",
-    contactAddress: "291 Daehak-ro, Yuseong-gu, Daejeon",
-    mainColor: "#263ce0",
-    acceptanceRate: "6%",
-  },
-  {
-    name: "POSTECH",
-    koreanName: "포항공과대학교",
-    city: "Pohang",
-    country: "South Korea",
-    qsRanking: 98,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.postech.ac.kr/eng",
-    imageUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/GIFT_POSTECH_New_Building.jpg/1280px-GIFT_POSTECH_New_Building.jpg",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/9/93/Postech_Logotype.svg",
-    description:
-      "POSTECH is a research-intensive university focused on science, engineering, and advanced technology.",
-    programs: ["Materials Science", "Chemistry", "Mechanical Engineering", "Computer Science", "Life Sciences"],
-    tuitionMin: 3100000,
-    tuitionMax: 6800000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Application form",
-      "Academic transcripts",
-      "Recommendation letters",
-      "Study plan",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "Graduate assistantships and merit-based aid may be available depending on department funding.",
-    hasScholarships: true,
-    housingInfo:
-      "Campus housing is available for many students, subject to university housing policies.",
-    internationalStudentInfo:
-      "International support services help with admissions, research placement, and campus life.",
-    applicationDeadlines: {
-      graduate: "Check department-specific admissions notices",
-      undergraduate: "Check annual admissions notices",
-    },
-    tags: ["STEM", "Research", "Pohang", "Private"],
-    contactEmail: "admission@postech.ac.kr",
-    contactPhone: "+82-54-279-3610",
-    contactAddress: "77 Cheongam-ro, Nam-gu, Pohang",
-    mainColor: "#c41230",
-    acceptanceRate: "8%",
-  },
-  {
-    name: "Sungkyunkwan University",
-    koreanName: "성균관대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 123,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.skku.edu/eng",
-    imageUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Sungkyunkwan_University_Bicheondang_and_600th_Anniversary_Hall.jpg/1280px-Sungkyunkwan_University_Bicheondang_and_600th_Anniversary_Hall.jpg",
-    logoUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/44/Sungkyunkwan_University_-_logotype_%28ko%2Ben%29.svg",
-    description:
-      "Sungkyunkwan University combines a long academic history with strengths in technology, business, and humanities.",
-    programs: ["Business", "Software", "Engineering", "Humanities", "Global Economics"],
-    tuitionMin: 3600000,
-    tuitionMax: 7600000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Application materials",
-      "Academic transcripts",
-      "Language or program-specific documents",
-      "Interview where required",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "Admissions scholarships and continuing scholarships are offered for qualified students.",
-    hasScholarships: true,
-    housingInfo:
-      "Dormitory options are available across Seoul and Suwon campuses, subject to availability.",
-    internationalStudentInfo:
-      "International services support admissions, exchange, Korean language study, and student life.",
-    applicationDeadlines: {
-      spring: "Review current international admissions guide",
-      fall: "Review current international admissions guide",
-    },
-    tags: ["Private", "Seoul", "Suwon", "Business"],
-    contactEmail: "admission@skku.edu",
-    contactPhone: "+82-2-760-1000",
-    contactAddress: "25-2 Sungkyunkwan-ro, Jongno-gu, Seoul",
-    mainColor: "#0b4ea2",
-    acceptanceRate: "18%",
-  },
-  {
-    name: "Hanyang University",
-    koreanName: "한양대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 164,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.hanyang.ac.kr/web/eng",
-    imageUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Hanyang_university_lions_hall.jpg/960px-Hanyang_university_lions_hall.jpg",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/5/51/Hanyang_University_KORENG_logo.svg",
-    description:
-      "Hanyang University is known for engineering, entrepreneurship, and practical education in Seoul and ERICA campuses.",
-    programs: ["Engineering", "Architecture", "Business", "Computer Science", "Design"],
-    tuitionMin: 3700000,
-    tuitionMax: 7900000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Online application",
-      "Academic transcripts",
-      "Personal statement",
-      "Language score if required",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "International student scholarships may be awarded based on admission results and academic performance.",
-    hasScholarships: true,
-    housingInfo:
-      "Dormitory housing is offered with separate application and eligibility requirements.",
-    internationalStudentInfo:
-      "The international office provides admissions, exchange, and student support services.",
-    applicationDeadlines: {
-      spring: "Check international office announcement",
-      fall: "Check international office announcement",
-    },
-    tags: ["Engineering", "Private", "Seoul", "ERICA"],
-    contactEmail: "intladmission@hanyang.ac.kr",
-    contactPhone: "+82-2-2220-0114",
-    contactAddress: "222 Wangsimni-ro, Seongdong-gu, Seoul",
-    mainColor: "#004098",
-    acceptanceRate: "20%",
-  },
-  {
-    name: "Kyung Hee University",
-    koreanName: "경희대학교",
-    city: "Seoul",
-    country: "South Korea",
-    qsRanking: 328,
-    qsRankingYear: 2026,
-    rankingSourceNote,
-    officialWebsite: "https://www.khu.ac.kr/eng",
-    imageUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/KHU_Seoul_Campus.jpg/1280px-KHU_Seoul_Campus.jpg",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/2/2b/Kyung_Hee_University_Logo.svg",
-    description:
-      "Kyung Hee University is a comprehensive private university with global programs and campuses in Seoul and Yongin.",
-    programs: ["Hospitality", "International Studies", "Medicine", "Management", "Arts"],
-    tuitionMin: 3400000,
-    tuitionMax: 7600000,
-    tuitionCurrency: "KRW",
-    admissionRequirements: [
-      "Application form",
-      "Academic transcripts",
-      "Language documentation",
-      "Program-specific materials",
-    ],
-    languagesOfInstruction: ["Korean", "English"],
-    scholarshipInfo:
-      "Scholarships are available for selected incoming and continuing international students.",
-    hasScholarships: true,
-    housingInfo:
-      "Dormitory and off-campus housing guidance is available through campus offices.",
-    internationalStudentInfo:
-      "International support includes admissions, visa guidance, Korean language support, and campus services.",
-    applicationDeadlines: {
-      spring: "Check current undergraduate or graduate admission guide",
-      fall: "Check current undergraduate or graduate admission guide",
-    },
-    tags: ["Private", "Seoul", "Global", "Hospitality"],
-    contactEmail: "admission@khu.ac.kr",
-    contactPhone: "+82-2-961-0114",
-    contactAddress: "26 Kyungheedae-ro, Dongdaemun-gu, Seoul",
-    mainColor: "#8b1d2c",
-    acceptanceRate: "22%",
-  },
-]
 
 async function seedAdminUser() {
   const { ADMIN_EMAIL, ADMIN_PASSWORD } = process.env
 
-  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-    console.warn(
-      "Skipping admin seed: set ADMIN_EMAIL and ADMIN_PASSWORD to create the first admin user.",
-    )
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD || ADMIN_PASSWORD === "replace-with-a-strong-password") {
+    console.warn("Skipping admin seed: set ADMIN_EMAIL and ADMIN_PASSWORD to create the first admin user.")
     return
   }
 
@@ -463,18 +392,118 @@ async function seedAdminUser() {
   })
 }
 
-async function main() {
-  for (const [index, university] of universities.entries()) {
-    const preparedUniversity = enrichUniversity(university, index)
+async function seedCouncil(university) {
+  const council = await prisma.studentCouncil.upsert({
+    where: { universityId: university.id },
+    update: {
+      name: `${university.name} Student Council`,
+      officialName: null,
+      description:
+        "Student council structure placeholder. Real members are not listed until verified from official public sources or added by a moderator.",
+      websiteUrl: null,
+      socialUrl: null,
+      contactEmail: null,
+      sourceUrl: university.officialWebsite,
+      verificationStatus: needsVerification,
+      lastVerifiedAt: null,
+    },
+    create: {
+      universityId: university.id,
+      name: `${university.name} Student Council`,
+      officialName: null,
+      description:
+        "Student council structure placeholder. Real members are not listed until verified from official public sources or added by a moderator.",
+      websiteUrl: null,
+      socialUrl: null,
+      contactEmail: null,
+      sourceUrl: university.officialWebsite,
+      verificationStatus: needsVerification,
+      lastVerifiedAt: null,
+    },
+  })
 
-    await prisma.university.upsert({
-      where: { name: preparedUniversity.name },
-      update: preparedUniversity,
-      create: preparedUniversity,
+  for (const role of placeholderCouncilRoles) {
+    const existing = await prisma.studentCouncilRole.findFirst({
+      where: {
+        councilId: council.id,
+        universityId: university.id,
+        roleTitle: role.roleTitle,
+        displayName: null,
+      },
     })
+
+    const data = {
+      councilId: council.id,
+      universityId: university.id,
+      adminUserId: null,
+      displayName: null,
+      roleTitle: role.roleTitle,
+      department: null,
+      description: "Role placeholder only. No real student name has been verified.",
+      responsibilities: role.responsibilities,
+      contactEmail: null,
+      contactUrl: null,
+      avatarUrl: null,
+      status: "pending",
+      verificationStatus: needsVerification,
+      sourceUrl: university.officialWebsite,
+    }
+
+    if (existing) {
+      await prisma.studentCouncilRole.update({ where: { id: existing.id }, data })
+    } else {
+      await prisma.studentCouncilRole.create({ data })
+    }
+  }
+}
+
+async function main() {
+  let inserted = 0
+  let updated = 0
+
+  for (const university of universities) {
+    const data = universityData(university)
+    const existing = await prisma.university.findFirst({
+      where: {
+        OR: [{ name: university.name }, { slug: data.slug }, { officialWebsite: university.officialWebsite }],
+      },
+      select: { id: true },
+    })
+
+    const savedUniversity = existing
+      ? await prisma.university.update({
+          where: { id: existing.id },
+          data: {
+            name: university.name,
+            ...data,
+          },
+        })
+      : await prisma.university.create({
+          data: {
+            name: university.name,
+            ...data,
+          },
+        })
+
+    if (existing) {
+      updated += 1
+    } else {
+      inserted += 1
+    }
+
+    await seedCouncil(savedUniversity)
   }
 
   await seedAdminUser()
+
+  console.log("UniChase QS 2026 Korea university seed complete")
+  console.log(`Inserted universities: ${inserted}`)
+  console.log(`Updated universities: ${updated}`)
+  console.log(`QS 2026 South Korea top-1000 universities seeded: ${universities.length}`)
+  console.log(`Student council placeholders seeded: ${universities.length}`)
+  console.log(`Placeholder roles per council: ${placeholderCouncilRoles.length}`)
+  console.log(`Sources: ${qsSourceUrl}, ${koreaRankingSourceUrl}`)
+  console.log("No real student council people were invented.")
 }
 
 main()

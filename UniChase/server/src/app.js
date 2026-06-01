@@ -7,6 +7,8 @@ import { errorHandler, notFoundHandler } from "./errors.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
 import { createAuthRouter } from "./routes/auth.js"
 import { createContactRouter } from "./routes/contact.js"
+import { createModeratorRouter } from "./routes/moderator.js"
+import { createStudentCouncilRouter } from "./routes/studentCouncils.js"
 import { createStudentAuthRouter } from "./routes/studentAuth.js"
 import { createUserRouter } from "./routes/user.js"
 import { createUniversityRouter } from "./routes/universities.js"
@@ -37,11 +39,13 @@ export function createApp({ prisma }) {
   })
 
   app.use("/api/universities", createUniversityRouter(prisma))
+  app.use("/api/student-councils", createStudentCouncilRouter(prisma))
   app.use("/api/auth", createStudentAuthRouter(prisma))
   app.use("/api/user", createUserRouter(prisma))
   app.use("/api/contact", createContactRouter(prisma))
   app.use("/api/admin", createAuthRouter(prisma))
   app.use("/api/admin/universities", createAdminUniversityRouter(prisma))
+  app.use("/api/moderator", createModeratorRouter(prisma))
   app.use(notFoundHandler)
   app.use(errorHandler)
 
