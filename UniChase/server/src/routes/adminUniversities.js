@@ -10,7 +10,7 @@ import {
   validateBody,
 } from "../validation.js"
 
-const defaultOrder = [{ qsRanking: "asc" }, { name: "asc" }]
+const defaultOrder = [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "asc" }]
 
 export function createAdminUniversityRouter(prisma) {
   const router = Router()

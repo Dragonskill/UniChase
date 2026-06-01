@@ -1,9 +1,24 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Loader2, LogOut, RotateCcw, Save, Trash2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
 import GlowLetters from '@/components/ui/GlowLetters'
 import type { ForumPost, QAPost } from '@/data/community'
 import type { NewsArticle } from '@/data/news'
+import type { StudentCouncil, StudentCouncilRole, University } from '@/data/universities'
+import {
+  createModeratorStudentCouncil,
+  createModeratorStudentCouncilRole,
+  deleteModeratorStudentCouncil,
+  deleteModeratorStudentCouncilRole,
+  fetchStudentCouncils,
+  fetchUniversities,
+  loginAdmin,
+  saveModeratorProfile,
+  updateModeratorStudentCouncil,
+  updateModeratorStudentCouncilRole,
+  type StudentCouncilInput,
+  type StudentCouncilRoleInput,
+} from '@/lib/api'
 import {
   createNextId,
   getManagedForumPosts,
@@ -26,15 +41,17 @@ import {
   hasModeratorAccount,
   loginModerator,
   logoutModerator,
+  setModeratorSession,
 } from '@/lib/moderatorAuth'
 
-type ModeratorTab = 'news' | 'forum' | 'qa' | 'members'
+type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils'
 
 const tabs: { id: ModeratorTab; label: string }[] = [
   { id: 'news', label: 'News' },
   { id: 'forum', label: 'Community' },
   { id: 'qa', label: 'Q&A' },
   { id: 'members', label: 'Society Members' },
+  { id: 'student-councils', label: 'Student Councils' },
 ]
 
 const inputClass = 'w-full bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal'
@@ -89,6 +106,36 @@ const blankMember: SocietyMember = {
   image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=500&q=80',
 }
 
+const blankCouncilForm: StudentCouncilInput = {
+  universityId: 0,
+  name: '',
+  officialName: '',
+  description: '',
+  websiteUrl: '',
+  socialUrl: '',
+  contactEmail: '',
+  sourceUrl: '',
+  verificationStatus: 'needs verification',
+  lastVerifiedAt: '',
+}
+
+const blankRoleForm: StudentCouncilRoleInput = {
+  councilId: 0,
+  universityId: 0,
+  adminUserId: null,
+  displayName: '',
+  roleTitle: 'International Student Representative',
+  department: '',
+  description: '',
+  responsibilities: [],
+  contactEmail: '',
+  contactUrl: '',
+  avatarUrl: '',
+  status: 'pending',
+  verificationStatus: 'needs verification',
+  sourceUrl: '',
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid gap-1">
@@ -106,6 +153,16 @@ function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const signInWithBackend = async () => {
+    const adminSession = await loginAdmin({ email, password })
+    setModeratorSession({
+      adminId: adminSession.admin.id,
+      name: adminSession.admin.email,
+      email: adminSession.admin.email,
+      token: adminSession.token,
+    })
+  }
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
@@ -113,9 +170,17 @@ function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
 
     try {
       if (isClaimMode) {
-        await claimModeratorAccount({ name, email, password })
+        try {
+          await signInWithBackend()
+        } catch {
+          await claimModeratorAccount({ name, email, password })
+        }
       } else {
-        await loginModerator({ email, password })
+        try {
+          await signInWithBackend()
+        } catch {
+          await loginModerator({ email, password })
+        }
       }
 
       onSignedIn()
@@ -172,7 +237,27 @@ export default function Moderator() {
   const [forumForm, setForumForm] = useState<ForumPost>(blankForumPost)
   const [qaForm, setQaForm] = useState<QAPost>(blankQaPost)
   const [memberForm, setMemberForm] = useState<SocietyMember>(blankMember)
+  const [universities, setUniversities] = useState<University[]>([])
+  const [studentCouncils, setStudentCouncils] = useState<StudentCouncil[]>([])
+  const [councilForm, setCouncilForm] = useState<StudentCouncilInput>(blankCouncilForm)
+  const [roleForm, setRoleForm] = useState<StudentCouncilRoleInput>(blankRoleForm)
+  const [profileForm, setProfileForm] = useState({
+    displayName: session?.name || '',
+    description: '',
+    defaultRole: 'International Student Representative',
+    avatarUrl: '',
+    contactEmail: session?.email || '',
+  })
   const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    if (!session?.token) {
+      return
+    }
+
+    fetchUniversities().then(setUniversities).catch(() => undefined)
+    fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
+  }, [session?.token])
 
   if (!session) {
     return <AuthCard onSignedIn={() => setSession(getModeratorSession())} />
@@ -217,6 +302,106 @@ export default function Moderator() {
     setManagedMembers(next)
     setMemberForm(blankMember)
     setStatus('Society member saved.')
+  }
+
+  const refreshStudentCouncils = () => {
+    if (session?.token) {
+      fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
+    }
+  }
+
+  const saveCouncil = () => {
+    if (!session?.token || !councilForm.universityId) {
+      setStatus('Backend admin login and university selection are required.')
+      return
+    }
+
+    const existing = studentCouncils.find((council) => council.universityId === Number(councilForm.universityId))
+    const action = existing
+      ? updateModeratorStudentCouncil(session.token, existing.id, councilForm)
+      : createModeratorStudentCouncil(session.token, councilForm)
+
+    action
+      .then((council) => {
+        setCouncilForm({
+          ...blankCouncilForm,
+          universityId: council.universityId,
+          name: council.name,
+          officialName: council.officialName || '',
+          description: council.description,
+          websiteUrl: council.websiteUrl || '',
+          socialUrl: council.socialUrl || '',
+          contactEmail: council.contactEmail || '',
+          sourceUrl: council.sourceUrl || '',
+          verificationStatus: council.verificationStatus,
+          lastVerifiedAt: council.lastVerifiedAt || '',
+        })
+        refreshStudentCouncils()
+        setStatus('Student council saved.')
+      })
+      .catch(() => setStatus('Could not save student council.'))
+  }
+
+  const saveCouncilRole = () => {
+    if (!session?.token || !roleForm.councilId || !roleForm.universityId) {
+      setStatus('Backend admin login, council, and university are required.')
+      return
+    }
+
+    createModeratorStudentCouncilRole(session.token, roleForm)
+      .then(() => {
+        setRoleForm({ ...blankRoleForm, councilId: roleForm.councilId, universityId: roleForm.universityId })
+        refreshStudentCouncils()
+        setStatus('Student council role saved.')
+      })
+      .catch(() => setStatus('Could not save student council role.'))
+  }
+
+  const updateRoleStatus = (role: StudentCouncilRole, data: Partial<StudentCouncilRoleInput>) => {
+    if (!session?.token) {
+      return
+    }
+
+    updateModeratorStudentCouncilRole(session.token, role.id, data)
+      .then(refreshStudentCouncils)
+      .catch(() => setStatus('Could not update role.'))
+  }
+
+  const removeCouncil = (council: StudentCouncil) => {
+    if (!session?.token) {
+      return
+    }
+
+    deleteModeratorStudentCouncil(session.token, council.id)
+      .then(() => {
+        refreshStudentCouncils()
+        setStatus('Student council deleted.')
+      })
+      .catch(() => setStatus('Could not delete student council.'))
+  }
+
+  const removeCouncilRole = (role: StudentCouncilRole) => {
+    if (!session?.token) {
+      return
+    }
+
+    deleteModeratorStudentCouncilRole(session.token, role.id)
+      .then(() => {
+        refreshStudentCouncils()
+        setStatus('Student council role deleted.')
+      })
+      .catch(() => setStatus('Could not delete student council role.'))
+  }
+
+  const saveProfile = () => {
+    if (!session?.token) {
+      setStatus('Backend admin login is required to save moderator profile.')
+      return
+    }
+
+    saveModeratorProfile(session.token, profileForm)
+      .then(() => setStatus('Moderator profile saved.'))
+      .catch(() => setStatus('Could not save moderator profile.'))
   }
 
   return (
@@ -322,6 +507,310 @@ export default function Moderator() {
           }} />
         </ContentEditor>
       )}
+
+      {tab === 'student-councils' && (
+        <StudentCouncilManager
+          token={session.token}
+          adminId={session.adminId}
+          universities={universities}
+          councils={studentCouncils}
+          councilForm={councilForm}
+          roleForm={roleForm}
+          profileForm={profileForm}
+          setCouncilForm={setCouncilForm}
+          setRoleForm={setRoleForm}
+          setProfileForm={setProfileForm}
+          onSaveCouncil={saveCouncil}
+          onSaveRole={saveCouncilRole}
+          onSaveProfile={saveProfile}
+          onEditCouncil={(council) => {
+            setCouncilForm({
+              universityId: council.universityId,
+              name: council.name,
+              officialName: council.officialName || '',
+              description: council.description,
+              websiteUrl: council.websiteUrl || '',
+              socialUrl: council.socialUrl || '',
+              contactEmail: council.contactEmail || '',
+              sourceUrl: council.sourceUrl || '',
+              verificationStatus: council.verificationStatus,
+              lastVerifiedAt: council.lastVerifiedAt || '',
+            })
+            setRoleForm({ ...blankRoleForm, councilId: council.id, universityId: council.universityId })
+          }}
+          onDeleteCouncil={removeCouncil}
+          onDeleteRole={removeCouncilRole}
+          onUpdateRole={updateRoleStatus}
+        />
+      )}
+    </div>
+  )
+}
+
+type ProfileForm = {
+  displayName: string
+  description: string
+  defaultRole: string
+  avatarUrl: string
+  contactEmail: string
+}
+
+function StudentCouncilManager({
+  token,
+  adminId,
+  universities,
+  councils,
+  councilForm,
+  roleForm,
+  profileForm,
+  setCouncilForm,
+  setRoleForm,
+  setProfileForm,
+  onSaveCouncil,
+  onSaveRole,
+  onSaveProfile,
+  onEditCouncil,
+  onDeleteCouncil,
+  onDeleteRole,
+  onUpdateRole,
+}: {
+  token?: string
+  adminId?: number
+  universities: University[]
+  councils: StudentCouncil[]
+  councilForm: StudentCouncilInput
+  roleForm: StudentCouncilRoleInput
+  profileForm: ProfileForm
+  setCouncilForm: (form: StudentCouncilInput) => void
+  setRoleForm: (form: StudentCouncilRoleInput) => void
+  setProfileForm: (form: ProfileForm) => void
+  onSaveCouncil: () => void
+  onSaveRole: () => void
+  onSaveProfile: () => void
+  onEditCouncil: (council: StudentCouncil) => void
+  onDeleteCouncil: (council: StudentCouncil) => void
+  onDeleteRole: (role: StudentCouncilRole) => void
+  onUpdateRole: (role: StudentCouncilRole, data: Partial<StudentCouncilRoleInput>) => void
+}) {
+  const selectedCouncil = councils.find((council) => council.id === Number(roleForm.councilId))
+  const selectedUniversity = universities.find((university) => university.id === Number(councilForm.universityId))
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
+      <section className="bg-surface rounded-2xl shadow-sm p-5">
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-lg font-bold text-navy">Student Council Management</h2>
+            <p className="text-sm text-muted">Use verified public sources, or mark placeholders as needing verification.</p>
+          </div>
+          {!token && <span className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-muted">Backend admin login required</span>}
+        </div>
+
+        <div className="grid gap-6">
+          <div className="grid gap-4">
+            <h3 className="text-sm font-semibold text-navy">Council profile</h3>
+            <Field label="University">
+              <select
+                value={councilForm.universityId}
+                onChange={(event) => {
+                  const universityId = Number(event.target.value)
+                  const university = universities.find((item) => item.id === universityId)
+                  const existing = councils.find((item) => item.universityId === universityId)
+                  setCouncilForm({
+                    ...councilForm,
+                    universityId,
+                    name: existing?.name || (university ? `${university.name} Student Council` : ''),
+                    description: existing?.description || councilForm.description,
+                    sourceUrl: existing?.sourceUrl || university?.officialWebsite || '',
+                    verificationStatus: existing?.verificationStatus || 'needs verification',
+                  })
+                  if (existing) {
+                    setRoleForm({ ...roleForm, councilId: existing.id, universityId })
+                  }
+                }}
+                className={inputClass}
+                disabled={!token}
+              >
+                <option value={0}>Choose university</option>
+                {universities.map((university) => (
+                  <option key={university.id} value={university.id}>{university.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Council name">
+              <input value={councilForm.name} onChange={(event) => setCouncilForm({ ...councilForm, name: event.target.value })} className={inputClass} disabled={!token} />
+            </Field>
+            <Field label="Official name">
+              <input value={councilForm.officialName || ''} onChange={(event) => setCouncilForm({ ...councilForm, officialName: event.target.value })} className={inputClass} disabled={!token} />
+            </Field>
+            <Field label="Description">
+              <textarea value={councilForm.description} onChange={(event) => setCouncilForm({ ...councilForm, description: event.target.value })} className={inputClass} rows={4} disabled={!token} />
+            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Website URL"><input value={councilForm.websiteUrl || ''} onChange={(event) => setCouncilForm({ ...councilForm, websiteUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Social URL"><input value={councilForm.socialUrl || ''} onChange={(event) => setCouncilForm({ ...councilForm, socialUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Contact email"><input value={councilForm.contactEmail || ''} onChange={(event) => setCouncilForm({ ...councilForm, contactEmail: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Source URL"><input value={councilForm.sourceUrl || ''} onChange={(event) => setCouncilForm({ ...councilForm, sourceUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Verification">
+                <select value={councilForm.verificationStatus || 'needs verification'} onChange={(event) => setCouncilForm({ ...councilForm, verificationStatus: event.target.value as StudentCouncil['verificationStatus'] })} className={inputClass} disabled={!token}>
+                  <option value="needs verification">Needs verification</option>
+                  <option value="manually added">Manually added</option>
+                  <option value="verified">Verified</option>
+                </select>
+              </Field>
+              <Field label="Last verified">
+                <input type="date" value={(councilForm.lastVerifiedAt || '').slice(0, 10)} onChange={(event) => setCouncilForm({ ...councilForm, lastVerifiedAt: event.target.value })} className={inputClass} disabled={!token} />
+              </Field>
+            </div>
+            <button onClick={onSaveCouncil} disabled={!token || !selectedUniversity} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
+              Save council
+            </button>
+          </div>
+
+          <div className="border-t border-gray-100 pt-6 grid gap-4">
+            <h3 className="text-sm font-semibold text-navy">Role or member</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Council">
+                <select
+                  value={roleForm.councilId}
+                  onChange={(event) => {
+                    const councilId = Number(event.target.value)
+                    const council = councils.find((item) => item.id === councilId)
+                    setRoleForm({ ...roleForm, councilId, universityId: council?.universityId || 0 })
+                  }}
+                  className={inputClass}
+                  disabled={!token}
+                >
+                  <option value={0}>Choose council</option>
+                  {councils.map((council) => <option key={council.id} value={council.id}>{council.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Role title"><input value={roleForm.roleTitle} onChange={(event) => setRoleForm({ ...roleForm, roleTitle: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Display name"><input value={roleForm.displayName || ''} onChange={(event) => setRoleForm({ ...roleForm, displayName: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Department"><input value={roleForm.department || ''} onChange={(event) => setRoleForm({ ...roleForm, department: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Status">
+                <select value={roleForm.status || 'pending'} onChange={(event) => setRoleForm({ ...roleForm, status: event.target.value as StudentCouncilRole['status'] })} className={inputClass} disabled={!token}>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </Field>
+              <Field label="Verification">
+                <select value={roleForm.verificationStatus || 'needs verification'} onChange={(event) => setRoleForm({ ...roleForm, verificationStatus: event.target.value as StudentCouncilRole['verificationStatus'] })} className={inputClass} disabled={!token}>
+                  <option value="needs verification">Needs verification</option>
+                  <option value="manually added">Manually added</option>
+                  <option value="verified">Verified</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Description"><textarea value={roleForm.description || ''} onChange={(event) => setRoleForm({ ...roleForm, description: event.target.value })} className={inputClass} rows={3} disabled={!token} /></Field>
+            <Field label="Responsibilities">
+              <textarea
+                value={(roleForm.responsibilities || []).join('\n')}
+                onChange={(event) => setRoleForm({ ...roleForm, responsibilities: event.target.value.split('\n').map((item) => item.trim()).filter(Boolean) })}
+                className={inputClass}
+                rows={3}
+                disabled={!token}
+              />
+            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Field label="Contact email"><input value={roleForm.contactEmail || ''} onChange={(event) => setRoleForm({ ...roleForm, contactEmail: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Contact URL"><input value={roleForm.contactUrl || ''} onChange={(event) => setRoleForm({ ...roleForm, contactUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Avatar URL"><input value={roleForm.avatarUrl || ''} onChange={(event) => setRoleForm({ ...roleForm, avatarUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                disabled={!token || !adminId}
+                checked={roleForm.adminUserId === adminId}
+                onChange={(event) => setRoleForm({
+                  ...roleForm,
+                  adminUserId: event.target.checked ? adminId || null : null,
+                  displayName: event.target.checked ? profileForm.displayName : roleForm.displayName,
+                  contactEmail: event.target.checked ? profileForm.contactEmail : roleForm.contactEmail,
+                  avatarUrl: event.target.checked ? profileForm.avatarUrl : roleForm.avatarUrl,
+                  verificationStatus: event.target.checked ? 'manually added' : roleForm.verificationStatus,
+                })}
+                className="h-4 w-4 rounded border-gray-300 text-teal focus:ring-teal"
+              />
+              Add myself as this role
+            </label>
+            <button onClick={onSaveRole} disabled={!token || !selectedCouncil} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
+              Save role
+            </button>
+          </div>
+
+          <div className="border-t border-gray-100 pt-6 grid gap-4">
+            <h3 className="text-sm font-semibold text-navy">Moderator profile</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Display name"><input value={profileForm.displayName} onChange={(event) => setProfileForm({ ...profileForm, displayName: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Default role"><input value={profileForm.defaultRole} onChange={(event) => setProfileForm({ ...profileForm, defaultRole: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Contact email"><input value={profileForm.contactEmail} onChange={(event) => setProfileForm({ ...profileForm, contactEmail: event.target.value })} className={inputClass} disabled={!token} /></Field>
+              <Field label="Avatar URL"><input value={profileForm.avatarUrl} onChange={(event) => setProfileForm({ ...profileForm, avatarUrl: event.target.value })} className={inputClass} disabled={!token} /></Field>
+            </div>
+            <Field label="Description"><textarea value={profileForm.description} onChange={(event) => setProfileForm({ ...profileForm, description: event.target.value })} className={inputClass} rows={3} disabled={!token} /></Field>
+            <button onClick={onSaveProfile} disabled={!token} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
+              Save moderator profile
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <aside className="bg-surface rounded-2xl shadow-sm p-5">
+        <h2 className="text-lg font-bold text-navy mb-4">Councils</h2>
+        <div className="space-y-3">
+          {councils.map((council) => (
+            <div key={council.id} className="rounded-lg border border-gray-100 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <button onClick={() => onEditCouncil(council)} className="text-left text-sm font-medium text-navy hover:text-teal transition-colors">
+                  {council.name}
+                </button>
+                <button onClick={() => onDeleteCouncil(council)} aria-label="Delete council" className="text-muted hover:text-red-500 transition-colors">
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <p className="text-xs text-muted mt-1">{council.verificationStatus}</p>
+              <div className="mt-3 space-y-2">
+                {(council.roles || []).map((role) => (
+                  <div key={role.id} className="rounded border border-gray-100 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        onClick={() => setRoleForm({
+                          councilId: council.id,
+                          universityId: council.universityId,
+                          adminUserId: role.adminUserId,
+                          displayName: role.displayName || '',
+                          roleTitle: role.roleTitle,
+                          department: role.department || '',
+                          description: role.description || '',
+                          responsibilities: role.responsibilities || [],
+                          contactEmail: role.contactEmail || '',
+                          contactUrl: role.contactUrl || '',
+                          avatarUrl: role.avatarUrl || '',
+                          status: role.status,
+                          verificationStatus: role.verificationStatus,
+                          sourceUrl: role.sourceUrl || '',
+                        })}
+                        className="text-left text-xs font-medium text-navy hover:text-teal transition-colors"
+                      >
+                        {role.roleTitle}
+                      </button>
+                      <button onClick={() => onDeleteRole(role)} aria-label="Delete role" className="text-muted hover:text-red-500 transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button onClick={() => onUpdateRole(role, { verificationStatus: 'verified' })} className="text-xs text-teal hover:underline">Verify</button>
+                      <button onClick={() => onUpdateRole(role, { status: 'inactive' })} className="text-xs text-muted hover:underline">Inactive</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {councils.length === 0 && <p className="text-sm text-muted">Seeded councils will appear after the API is running.</p>}
+        </div>
+      </aside>
     </div>
   )
 }

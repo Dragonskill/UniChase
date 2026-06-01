@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { ApiError, asyncHandler } from "../errors.js"
-import { mapUniversityForClient } from "../mappers/universityMapper.js"
+import { mapStudentCouncilForClient, mapUniversityForClient } from "../mappers/universityMapper.js"
 import {
   buildUniversityWhere,
   filterUniversitiesInMemory,
@@ -9,7 +9,10 @@ import {
 import { parseCompareQuery, parseUniversityQuery, recommendationSchema, validateBody } from "../validation.js"
 import { scoreUniversities } from "../recommendations.js"
 
-const defaultOrder = [{ qsRanking: "asc" }, { name: "asc" }]
+const defaultOrder = [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "asc" }]
+const universityInclude = {
+  studentCouncil: { include: { roles: { orderBy: [{ status: "asc" }, { roleTitle: "asc" }] } } },
+}
 
 export function createUniversityRouter(prisma) {
   const router = Router()
@@ -19,6 +22,7 @@ export function createUniversityRouter(prisma) {
     const universities = await prisma.university.findMany({
       where: buildUniversityWhere(filters),
       orderBy: defaultOrder,
+      include: universityInclude,
     })
     const filteredUniversities = filterUniversitiesInMemory(universities, filters)
 
@@ -39,6 +43,7 @@ export function createUniversityRouter(prisma) {
       const universities = await prisma.university.findMany({
         where: { id: { in: ids } },
         orderBy: defaultOrder,
+        include: universityInclude,
       })
 
       res.json({
@@ -88,12 +93,40 @@ export function createUniversityRouter(prisma) {
   )
 
   router.get(
-    "/:idOrSlug",
+    "/:idOrSlug/student-council",
     asyncHandler(async (req, res) => {
       const identifier = req.params.idOrSlug
       const university = /^\d+$/.test(identifier)
         ? await prisma.university.findUnique({ where: { id: parsePositiveId(identifier) } })
         : await prisma.university.findUnique({ where: { slug: identifier } })
+
+      if (!university) {
+        throw new ApiError(404, "University not found")
+      }
+
+      const council = await prisma.studentCouncil.findUnique({
+        where: { universityId: university.id },
+        include: {
+          roles: { orderBy: [{ status: "asc" }, { roleTitle: "asc" }] },
+          university: { select: { id: true, name: true, slug: true, city: true } },
+        },
+      })
+
+      if (!council) {
+        throw new ApiError(404, "Student council not found")
+      }
+
+      res.json({ data: mapStudentCouncilForClient(council) })
+    }),
+  )
+
+  router.get(
+    "/:idOrSlug",
+    asyncHandler(async (req, res) => {
+      const identifier = req.params.idOrSlug
+      const university = /^\d+$/.test(identifier)
+        ? await prisma.university.findUnique({ where: { id: parsePositiveId(identifier) }, include: universityInclude })
+        : await prisma.university.findUnique({ where: { slug: identifier }, include: universityInclude })
 
       if (!university) {
         throw new ApiError(404, "University not found")

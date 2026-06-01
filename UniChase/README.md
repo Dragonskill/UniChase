@@ -7,9 +7,11 @@ The public visual design is intentionally preserved. New functionality reuses th
 ## Features
 
 - Backend-loaded university list and detail pages
+- QS 2026 seed coverage for the 28 South Korean institutions listed in the QS global top 1000
 - Advanced university filters: city, QS ranking range, tuition range, major, language, dormitory, public/private type, deadline status, and study level
 - University comparison for 2 to 4 universities
 - Save/favorite universities with localStorage and optional account sync
+- Student council profiles and role/member placeholders with source URLs and verification status
 - Student account register/login/logout with hashed passwords and JWTs
 - Student dashboard with saved universities, comparisons, checklist, deadlines, recommendations link, and profile
 - Application deadline tracking inside university data and dashboard reminders
@@ -19,6 +21,7 @@ The public visual design is intentionally preserved. New functionality reuses th
 - SEO metadata, Open Graph/Twitter tags, canonical URLs, structured data, `sitemap.xml`, and `robots.txt`
 - Interface language switcher for English, Korean, Russian, and Uzbek labels
 - Contact/support form stored in the database
+- Moderator tools for backend admins to add, edit, verify, and delete student council records and council roles
 
 Excluded by design:
 
@@ -62,6 +65,8 @@ npm run db:deploy
 npm run db:seed
 ```
 
+`npm run seed:universities` is an alias for the same seed command.
+
 Run the backend:
 
 ```bash
@@ -83,6 +88,9 @@ Prisma schema and migrations live in `prisma/`.
 Main models:
 
 - `University`
+- `StudentCouncil`
+- `StudentCouncilRole`
+- `ModeratorProfile`
 - `AdminUser`
 - `StudentUser`
 - `SavedUniversity`
@@ -100,9 +108,15 @@ npm run db:generate
 npm run db:migrate
 npm run db:deploy
 npm run db:seed
+npm run seed:universities
 ```
 
-Seed data includes South Korean universities with structured programs, tuition ranges, requirements, language, scholarship fields, housing, deadlines, tags, contact data, public/private type, dormitory availability, and study levels. QS ranking values are development seed values and should be verified against current QS data before production.
+Seed data includes every South Korean institution in the QS World University Rankings 2026 global top 1000, based on:
+
+- [QS World University Rankings](https://www.topuniversities.com/qs-top-uni-wur)
+- [Truescho country ranking mirror for Korea](https://truescho.com/en/rankings/country/kr)
+
+The seed stores QS rank labels, source URLs, verification timestamps, and student council placeholders. It intentionally does not invent real student council people; role/member records start as placeholders marked `needs verification` until a moderator verifies public sources or adds known information.
 
 ## API Endpoints
 
@@ -111,10 +125,13 @@ Public:
 - `GET /api/health`
 - `GET /api/universities`
 - `GET /api/universities/:idOrSlug`
+- `GET /api/universities/:idOrSlug/student-council`
 - `GET /api/universities/search`
 - `GET /api/universities/filter`
 - `GET /api/universities/compare?ids=1,2`
 - `POST /api/universities/recommendations`
+- `GET /api/student-councils`
+- `GET /api/student-councils/:id`
 - `POST /api/contact`
 
 University query parameters:
@@ -158,6 +175,19 @@ Admin:
 - `PUT /api/admin/universities/:id`
 - `DELETE /api/admin/universities/:id`
 
+Moderator:
+
+- `POST /api/moderator/universities`
+- `PATCH /api/moderator/universities/:id`
+- `POST /api/moderator/student-councils`
+- `PATCH /api/moderator/student-councils/:id`
+- `DELETE /api/moderator/student-councils/:id`
+- `POST /api/moderator/student-council-roles`
+- `PATCH /api/moderator/student-council-roles/:id`
+- `DELETE /api/moderator/student-council-roles/:id`
+- `POST /api/moderator/profile`
+- `PATCH /api/moderator/profile`
+
 Protected routes require:
 
 ```http
@@ -190,7 +220,7 @@ Backend:
 1. Provision PostgreSQL.
 2. Set `DATABASE_URL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORT`, and `CORS_ORIGIN`.
 3. Run `npm run db:deploy`.
-4. Run `npm run db:seed` once.
+4. Run `npm run db:seed` once to load the QS 2026 Korea dataset and create the backend admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 5. Start with `npm run server:start`.
 
 For Vercel-only hosting, deploy the Express backend separately or adapt it into serverless functions. This project is Vite, not Next.js.
@@ -216,6 +246,8 @@ Manual checks used during development:
 - Deadline saving
 - Recommendation form and scored results
 - Expanded university detail pages
+- Student council detail sections and role verification badges
+- Moderator backend login plus student council create, update, and delete flows
 - Contact form storage
 - Language switcher
 - Mobile layout

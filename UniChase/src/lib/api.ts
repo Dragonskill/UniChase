@@ -1,4 +1,4 @@
-import type { University } from "@/data/universities"
+import type { StudentCouncil, StudentCouncilRole, University } from "@/data/universities"
 
 type UniversityListResponse = {
   data: University[]
@@ -6,6 +6,18 @@ type UniversityListResponse = {
 
 type UniversityDetailResponse = {
   data: University
+}
+
+type StudentCouncilListResponse = {
+  data: StudentCouncil[]
+}
+
+type StudentCouncilResponse = {
+  data: StudentCouncil
+}
+
+type StudentCouncilRoleResponse = {
+  data: StudentCouncilRole
 }
 
 const fallbackApiBaseUrl = "http://localhost:3001/api"
@@ -105,6 +117,16 @@ export async function fetchFilteredUniversities(filters: Record<string, string |
 
 export async function fetchUniversity(idOrSlug: number | string) {
   const response = await apiFetch<UniversityDetailResponse>(`/universities/${idOrSlug}`)
+  return response.data
+}
+
+export async function fetchStudentCouncil(idOrSlug: number | string) {
+  const response = await apiFetch<StudentCouncilResponse>(`/universities/${idOrSlug}/student-council`)
+  return response.data
+}
+
+export async function fetchStudentCouncils() {
+  const response = await apiFetch<StudentCouncilListResponse>("/student-councils")
   return response.data
 }
 
@@ -252,6 +274,123 @@ export async function submitContact(data: {
 }) {
   return apiFetchWithAuth("/contact", {
     method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export type AdminLoginResponse = {
+  token: string
+  admin: {
+    id: number
+    email: string
+  }
+}
+
+export async function loginAdmin(data: { email: string; password: string }) {
+  const response = await apiFetchWithAuth<{ data: AdminLoginResponse }>("/admin/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
+export type StudentCouncilInput = {
+  universityId: number
+  name: string
+  officialName?: string | null
+  description: string
+  websiteUrl?: string | null
+  socialUrl?: string | null
+  contactEmail?: string | null
+  sourceUrl?: string | null
+  verificationStatus?: StudentCouncil["verificationStatus"]
+  lastVerifiedAt?: string | null
+}
+
+export type StudentCouncilRoleInput = {
+  councilId: number
+  universityId: number
+  adminUserId?: number | null
+  displayName?: string | null
+  roleTitle: string
+  department?: string | null
+  description?: string | null
+  responsibilities?: string[]
+  contactEmail?: string | null
+  contactUrl?: string | null
+  avatarUrl?: string | null
+  status?: StudentCouncilRole["status"]
+  verificationStatus?: StudentCouncilRole["verificationStatus"]
+  sourceUrl?: string | null
+}
+
+export async function createModeratorStudentCouncil(token: string, data: StudentCouncilInput) {
+  const response = await apiFetchWithAuth<StudentCouncilResponse>("/moderator/student-councils", {
+    token,
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
+export async function updateModeratorStudentCouncil(token: string, id: number, data: Partial<StudentCouncilInput>) {
+  const response = await apiFetchWithAuth<StudentCouncilResponse>(`/moderator/student-councils/${id}`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
+export async function deleteModeratorStudentCouncil(token: string, id: number) {
+  return apiFetchWithAuth(`/moderator/student-councils/${id}`, {
+    token,
+    method: "DELETE",
+  })
+}
+
+export async function createModeratorStudentCouncilRole(token: string, data: StudentCouncilRoleInput) {
+  const response = await apiFetchWithAuth<StudentCouncilRoleResponse>("/moderator/student-council-roles", {
+    token,
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
+export async function updateModeratorStudentCouncilRole(
+  token: string,
+  id: number,
+  data: Partial<StudentCouncilRoleInput>,
+) {
+  const response = await apiFetchWithAuth<StudentCouncilRoleResponse>(`/moderator/student-council-roles/${id}`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+  return response.data
+}
+
+export async function deleteModeratorStudentCouncilRole(token: string, id: number) {
+  return apiFetchWithAuth(`/moderator/student-council-roles/${id}`, {
+    token,
+    method: "DELETE",
+  })
+}
+
+export async function saveModeratorProfile(
+  token: string,
+  data: {
+    displayName?: string
+    description?: string | null
+    defaultRole?: string | null
+    avatarUrl?: string | null
+    contactEmail?: string | null
+  },
+) {
+  return apiFetchWithAuth("/moderator/profile", {
+    token,
+    method: "PATCH",
     body: JSON.stringify(data),
   })
 }

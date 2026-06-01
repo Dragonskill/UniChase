@@ -16,12 +16,17 @@ model University {
   country                  String   @default("South Korea")
   universityType           String   @default("private")
   qsRanking                Int?
+  qsRankingLabel           String?
   qsRankingYear            Int?
   rankingSourceNote        String?  @db.Text
+  qsSourceUrl              String?
+  sourceUrls               String[] @default([])
+  lastVerifiedAt           DateTime?
   officialWebsite          String   @unique
-  imageUrl                 String
-  logoUrl                  String
+  imageUrl                 String?
+  logoUrl                  String?
   description              String   @db.Text
+  fullDescription          String?  @db.Text
   programs                 String[] @default([])
   tuitionMin               Int?
   tuitionMax               Int?
@@ -29,8 +34,8 @@ model University {
   admissionRequirements    String[] @default([])
   languagesOfInstruction   String[] @default([])
   scholarshipInfo          String?  @db.Text
-  hasScholarships          Boolean  @default(false)
-  hasDormitory             Boolean  @default(false)
+  hasScholarships          Boolean? @default(false)
+  hasDormitory             Boolean? @default(false)
   housingInfo              String?  @db.Text
   internationalStudentInfo String?  @db.Text
   studentLife              String?  @db.Text
@@ -54,6 +59,8 @@ model University {
   savedBy                  SavedUniversity[]
   comparisonItems          ComparisonUniversity[]
   deadlineReminders        UserDeadline[]
+  studentCouncil           StudentCouncil?
+  studentCouncilRoles      StudentCouncilRole[]
 
   @@index([city])
   @@index([country])
@@ -62,12 +69,80 @@ model University {
   @@index([applicationDeadline])
 }
 
+model StudentCouncil {
+  id                 Int                  @id @default(autoincrement())
+  universityId       Int                  @unique
+  name               String
+  officialName       String?
+  description        String               @db.Text
+  websiteUrl         String?
+  socialUrl          String?
+  contactEmail       String?
+  sourceUrl          String?
+  verificationStatus String               @default("needs verification")
+  lastVerifiedAt     DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  university         University           @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  roles              StudentCouncilRole[]
+
+  @@index([verificationStatus])
+}
+
+model StudentCouncilRole {
+  id                 Int            @id @default(autoincrement())
+  councilId          Int
+  universityId       Int
+  adminUserId        Int?
+  displayName        String?
+  roleTitle          String
+  department         String?
+  description        String?        @db.Text
+  responsibilities   String[]       @default([])
+  contactEmail       String?
+  contactUrl         String?
+  avatarUrl          String?
+  status             String         @default("pending")
+  verificationStatus String         @default("needs verification")
+  sourceUrl          String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  council            StudentCouncil @relation(fields: [councilId], references: [id], onDelete: Cascade)
+  university         University     @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  adminUser          AdminUser?     @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([councilId])
+  @@index([universityId])
+  @@index([adminUserId])
+  @@index([status])
+  @@index([verificationStatus])
+}
+
 model AdminUser {
   id           Int      @id @default(autoincrement())
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  councilRoles     StudentCouncilRole[]
+  moderatorProfile ModeratorProfile?
+}
+
+model ModeratorProfile {
+  id          Int       @id @default(autoincrement())
+  adminUserId Int      @unique
+  displayName String
+  description String?  @db.Text
+  defaultRole String?
+  avatarUrl   String?
+  contactEmail String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  adminUser    AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
 }
 
 model StudentUser {
