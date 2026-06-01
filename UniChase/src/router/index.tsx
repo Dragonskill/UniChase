@@ -16,6 +16,8 @@ import SignUp from '../pages/auth/SignUp'
 import Compare from '../pages/Compare'
 import Match from '../pages/Match'
 import Dashboard from '../pages/Dashboard'
+import Notifications from '../pages/Notifications'
+import Calendar from '../pages/Calendar'
 import Contact from '../pages/Contact'
 import Moderator from '../pages/Moderator'
 
@@ -31,6 +33,8 @@ const router = createBrowserRouter([
       { path: '/compare',         element: <Compare /> },
       { path: '/match',           element: <Match /> },
       { path: '/dashboard',       element: <Dashboard /> },
+      { path: '/notifications',    element: <Notifications /> },
+      { path: '/calendar',         element: <Calendar /> },
       { path: '/contact',         element: <Contact /> },
       { path: '/moderator',       element: <Moderator /> },
       { path: '/reviews',         element: <ReviewList /> },

@@ -30,6 +30,7 @@ export function createAuthRouter(prisma) {
           admin: {
             id: admin.id,
             email: admin.email,
+            role: admin.role,
           },
         },
       })

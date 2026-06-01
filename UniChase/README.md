@@ -17,7 +17,15 @@ The public visual design is intentionally preserved. New functionality reuses th
 - Equal-height university cards with fixed image ratio, lazy image loading, broken-image fallback handling, result count, sorting, share links, breadcrumbs, recently viewed universities, and back-to-top navigation
 - Student account register/login/logout with hashed passwords and JWTs
 - Student dashboard with saved universities, comparisons, checklist, deadlines, recommendations link, and profile
+- Guided onboarding preferences that can generate dashboard checklist and deadline items
 - Application deadline tracking inside university data and dashboard reminders
+- Application status tracker with per-university status, deadline, notes, and calendar integration
+- File/document vault metadata for application documents
+- Student calendar events with `.ics` export for external calendar apps
+- Real student community posts, comments, likes, saves, reports, and official answers
+- Notification center with unread counts, notification dropdown, full notification page, and announcements
+- Moderator operations queue for community content, reports, verification, broken image/link review, role management, internal notes, announcements, and activity logs
+- Analytics event tracking plus moderator analytics overview, top universities, search terms, user metrics, and CSV export
 - Rule-based "Find My Best University Match" recommendations
 - Expanded university detail pages with tuition, programs, requirements, documents, steps, housing, student life, deadlines, official links, and contact data
 - Improved search across names, Korean names, city, majors, programs, tags, language, and descriptions
@@ -58,6 +66,8 @@ VITE_API_BASE_URL="http://localhost:3001/api"
 ```
 
 Email sending is not configured. Contact messages are stored in `ContactMessage`; add an email provider later if notifications are needed.
+
+Private binary document storage is not configured. The document vault stores secure metadata and returns `501` from the upload endpoint until an S3/R2/GCS-style storage provider is added.
 
 ## Local Setup
 
@@ -104,6 +114,19 @@ Main models:
 - `ChecklistItem`
 - `RecommendationPreference`
 - `ContactMessage`
+- `CommunityPost`
+- `CommunityComment`
+- `CommunityLike`
+- `CommunitySavedPost`
+- `CommunityReport`
+- `Notification`
+- `ModeratorActivityLog`
+- `ModeratorInternalNote`
+- `AnalyticsEvent`
+- `UserOnboardingPreference`
+- `UserApplication`
+- `UserDocument`
+- `CalendarEvent`
 
 Useful commands:
 
@@ -181,6 +204,54 @@ Student dashboard:
 - `POST /api/user/deadlines`
 - `GET /api/user/checklist`
 - `PATCH /api/user/checklist`
+- `GET /api/user/onboarding`
+- `POST /api/user/onboarding`
+- `PATCH /api/user/onboarding`
+- `POST /api/user/onboarding/generate-dashboard`
+- `GET /api/user/applications`
+- `POST /api/user/applications`
+- `GET /api/user/applications/:id`
+- `PATCH /api/user/applications/:id`
+- `DELETE /api/user/applications/:id`
+- `GET /api/user/documents`
+- `POST /api/user/documents`
+- `GET /api/user/documents/:id`
+- `PATCH /api/user/documents/:id`
+- `DELETE /api/user/documents/:id`
+- `POST /api/user/documents/:id/upload`
+- `GET /api/user/calendar/events`
+- `POST /api/user/calendar/events`
+- `PATCH /api/user/calendar/events/:id`
+- `DELETE /api/user/calendar/events/:id`
+- `GET /api/user/calendar/export.ics`
+- `GET /api/user/calendar/events/:id/export.ics`
+
+Community:
+
+- `GET /api/community/categories`
+- `GET /api/community/posts`
+- `GET /api/community/posts/:id`
+- `POST /api/community/posts`
+- `PATCH /api/community/posts/:id`
+- `DELETE /api/community/posts/:id`
+- `POST /api/community/posts/:id/comments`
+- `PATCH /api/community/comments/:id`
+- `DELETE /api/community/comments/:id`
+- `POST /api/community/posts/:id/like`
+- `POST /api/community/posts/:id/save`
+- `POST /api/community/posts/:id/report`
+
+Notifications:
+
+- `GET /api/notifications`
+- `GET /api/notifications/unread-count`
+- `PATCH /api/notifications/:id/read`
+- `PATCH /api/notifications/read-all`
+- `DELETE /api/notifications/:id`
+
+Analytics:
+
+- `POST /api/analytics/event`
 
 Admin:
 
@@ -203,6 +274,22 @@ Moderator:
 - `DELETE /api/moderator/student-council-roles/:id`
 - `POST /api/moderator/profile`
 - `PATCH /api/moderator/profile`
+- `GET /api/moderator/queue`
+- `GET /api/moderator/reports`
+- `PATCH /api/moderator/posts/:id/status`
+- `PATCH /api/moderator/comments/:id/status`
+- `PATCH /api/moderator/reviews/:id/status`
+- `GET /api/moderator/activity-logs`
+- `GET /api/moderator/broken-links`
+- `GET /api/moderator/broken-images`
+- `PATCH /api/moderator/users/:id/role`
+- `POST /api/moderator/internal-notes`
+- `POST /api/moderator/notifications/announcement`
+- `GET /api/moderator/analytics/overview`
+- `GET /api/moderator/analytics/top-universities`
+- `GET /api/moderator/analytics/searches`
+- `GET /api/moderator/analytics/users`
+- `GET /api/moderator/analytics/export`
 
 Protected routes require:
 
@@ -230,6 +317,16 @@ The navbar includes an accessible light/dark mode toggle. The selected theme is 
 ## Image Management
 
 Moderators can update university image data from the Student Councils moderator tab after selecting a university. Editable fields include campus image URL, logo URL, image alt text, image source URL, image verification date, and university verification date. URL and date fields are validated by the API, and public image rendering falls back automatically if a URL is missing or broken.
+
+## Platform Expansion
+
+The community system is database-backed and supports category/search filters, university-linked posts, comments, likes, saved posts, edit/delete ownership checks, official answers, and student reporting.
+
+Notifications are generated for student-facing workflow updates and can also be sent by moderators as platform announcements. The navbar shows an unread badge and preview dropdown, while `/notifications` provides the full notification center.
+
+Student workflows now include onboarding preferences, application tracking, document vault records, and calendar events. Creating an application with a deadline can create a linked calendar event, and students can export all events or a single event as `.ics`.
+
+Moderator Platform Ops extends the existing moderator area with content queues, report review, verification queues, broken asset/link review, internal notes, announcements, role changes, activity logs, and analytics dashboards. Admin role claims include the moderator role so sensitive operations can be permission-gated.
 
 ## Deployment
 

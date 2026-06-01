@@ -65,6 +65,9 @@ model University {
   deadlineReminders        UserDeadline[]
   studentCouncil           StudentCouncil?
   studentCouncilRoles      StudentCouncilRole[]
+  communityPosts           CommunityPost[]
+  applications             UserApplication[]
+  calendarEvents           CalendarEvent[]
 
   @@index([city])
   @@index([country])
@@ -128,11 +131,14 @@ model AdminUser {
   id           Int      @id @default(autoincrement())
   email        String   @unique
   passwordHash String
+  role         String   @default("admin")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   councilRoles     StudentCouncilRole[]
   moderatorProfile ModeratorProfile?
+  activityLogs     ModeratorActivityLog[]
+  internalNotes    ModeratorInternalNote[]
 }
 
 model ModeratorProfile {
@@ -167,6 +173,17 @@ model StudentUser {
   deadlineReminders         UserDeadline[]
   checklistItems            ChecklistItem[]
   recommendationPreferences RecommendationPreference[]
+  communityPosts            CommunityPost[]
+  communityComments         CommunityComment[]
+  communityLikes            CommunityLike[]
+  savedCommunityPosts       CommunitySavedPost[]
+  communityReports          CommunityReport[]
+  notifications             Notification[]
+  analyticsEvents           AnalyticsEvent[]
+  onboardingPreference      UserOnboardingPreference?
+  applications              UserApplication[]
+  documents                 UserDocument[]
+  calendarEvents            CalendarEvent[]
 }
 
 model SavedUniversity {
@@ -233,6 +250,8 @@ model ChecklistItem {
   updatedAt DateTime    @updatedAt
 
   user      StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents UserDocument[]
+  calendarEvents CalendarEvent[]
 }
 
 model RecommendationPreference {
@@ -263,4 +282,280 @@ model ContactMessage {
   message              String   @db.Text
   status               String   @default("new")
   createdAt            DateTime @default(now())
+}
+
+model CommunityPost {
+  id                Int                  @id @default(autoincrement())
+  title             String
+  content           String               @db.Text
+  category          String
+  universityId      Int?
+  relatedProgram    String?
+  tags              String[]             @default([])
+  authorId          Int
+  status            String               @default("published")
+  pinned            Boolean              @default(false)
+  officialAnswer    String?              @db.Text
+  officialCommentId Int?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  author            StudentUser          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  university        University?          @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  comments          CommunityComment[]
+  likes             CommunityLike[]
+  savedBy           CommunitySavedPost[]
+  reports           CommunityReport[]
+
+  @@index([authorId])
+  @@index([category])
+  @@index([universityId])
+  @@index([status])
+  @@index([pinned])
+  @@index([createdAt])
+}
+
+model CommunityComment {
+  id              Int                @id @default(autoincrement())
+  postId          Int
+  authorId        Int
+  content         String             @db.Text
+  parentCommentId Int?
+  status          String             @default("published")
+  official        Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  post            CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          StudentUser        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment   CommunityComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies         CommunityComment[] @relation("CommentReplies")
+  reports         CommunityReport[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentCommentId])
+  @@index([status])
+}
+
+model CommunityLike {
+  userId    Int
+  postId    Int
+  createdAt DateTime      @default(now())
+
+  user      StudentUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model CommunitySavedPost {
+  userId    Int
+  postId    Int
+  createdAt DateTime      @default(now())
+
+  user      StudentUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model CommunityReport {
+  id              Int               @id @default(autoincrement())
+  postId          Int?
+  commentId       Int?
+  reporterId      Int
+  reason          String
+  details         String?           @db.Text
+  status          String            @default("pending")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  post            CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment         CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter        StudentUser       @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([commentId])
+  @@index([reporterId])
+  @@index([status])
+}
+
+model Notification {
+  id                Int         @id @default(autoincrement())
+  userId            Int
+  type              String
+  title             String
+  message           String      @db.Text
+  relatedEntityType String?
+  relatedEntityId   Int?
+  linkUrl           String?
+  isRead            Boolean     @default(false)
+  priority          String      @default("normal")
+  createdAt         DateTime    @default(now())
+
+  user              StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ModeratorActivityLog {
+  id             Int        @id @default(autoincrement())
+  adminUserId    Int?
+  actionType     String
+  targetEntity   String
+  targetEntityId Int?
+  previousStatus String?
+  newStatus      String?
+  metadata       Json?
+  createdAt      DateTime   @default(now())
+
+  adminUser      AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([targetEntity, targetEntityId])
+  @@index([createdAt])
+}
+
+model ModeratorInternalNote {
+  id             Int       @id @default(autoincrement())
+  adminUserId    Int
+  targetEntity   String
+  targetEntityId Int?
+  note           String    @db.Text
+  createdAt      DateTime  @default(now())
+
+  adminUser      AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([targetEntity, targetEntityId])
+}
+
+model AnalyticsEvent {
+  id         Int          @id @default(autoincrement())
+  userId     Int?
+  sessionId  String?
+  eventType  String
+  entityType String?
+  entityId   Int?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+
+  user       StudentUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model UserOnboardingPreference {
+  id                    Int         @id @default(autoincrement())
+  userId                Int         @unique
+  desiredMajor          String?
+  degreeLevel           String?
+  preferredCity         String?
+  languagePreference    String?
+  budgetMin             Int?
+  budgetMax             Int?
+  qsRankMin             Int?
+  qsRankMax             Int?
+  dormitoryRequired     Boolean?
+  scholarshipPreference String?
+  targetIntake          String?
+  educationLevel        String?
+  preparationStage      String?
+  nationality           String?
+  testStatus            String?
+  onboardingCompleted   Boolean     @default(false)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  user                  StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserApplication {
+  id                  Int             @id @default(autoincrement())
+  userId              Int
+  universityId        Int
+  programId           String?
+  status              String          @default("Interested")
+  intake              String?
+  applicationDeadline DateTime?
+  submittedDate       DateTime?
+  resultDate          DateTime?
+  notes               String?         @db.Text
+  priority            String          @default("normal")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user                StudentUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university          University      @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  documents           UserDocument[]
+  calendarEvents      CalendarEvent[]
+
+  @@index([userId, status])
+  @@index([universityId])
+  @@index([applicationDeadline])
+}
+
+model UserDocument {
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  applicationId   Int?
+  checklistItemId Int?
+  documentType    String
+  title           String
+  status          String           @default("missing")
+  fileUrl         String?
+  fileName        String?
+  fileType        String?
+  fileSize        Int?
+  expirationDate  DateTime?
+  notes           String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            StudentUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application     UserApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  checklistItem   ChecklistItem?   @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([applicationId])
+  @@index([checklistItemId])
+  @@index([expirationDate])
+}
+
+model CalendarEvent {
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  title           String
+  description     String?          @db.Text
+  eventType       String
+  startDate       DateTime
+  endDate         DateTime?
+  allDay          Boolean          @default(true)
+  universityId    Int?
+  programId       String?
+  applicationId   Int?
+  checklistItemId Int?
+  roadmapStepId   String?
+  status          String           @default("upcoming")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            StudentUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university      University?      @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  application     UserApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  checklistItem   ChecklistItem?   @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startDate])
+  @@index([eventType])
+  @@index([status])
+  @@index([applicationId])
 }

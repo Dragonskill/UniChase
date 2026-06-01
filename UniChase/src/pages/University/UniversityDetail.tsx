@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
 import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
 import UniversityImage from "@/components/ui/UniversityImage"
-import { fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
+import { createApplication, fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
 import { applySeo } from "@/lib/seo"
 import { addRecentlyViewedUniversity, getToken, saveLocalDeadline } from "@/lib/storage"
 
@@ -51,6 +51,7 @@ function UniversityDetail() {
   const [isLoading, setIsLoading] = useState(Boolean(identifier))
   const [errorMessage, setErrorMessage] = useState(() => (identifier ? "" : "University not found."))
   const [deadlineMessage, setDeadlineMessage] = useState("")
+  const [applicationMessage, setApplicationMessage] = useState("")
   const [shareMessage, setShareMessage] = useState("")
   const reduceMotion = useReducedMotion()
   const uni = loadedUni
@@ -158,6 +159,24 @@ function UniversityDetail() {
     setDeadlineMessage("Deadline saved to your dashboard.")
   }
 
+  const addApplicationTracker = () => {
+    if (!uni) return
+    const token = getToken()
+
+    if (!token) {
+      setApplicationMessage("Login to add this university to your application tracker.")
+      return
+    }
+
+    createApplication(token, {
+      universityId: uni.id,
+      status: "Interested",
+      applicationDeadline: uni.deadlines?.applicationDeadline || null,
+    })
+      .then(() => setApplicationMessage("Application tracker created in your dashboard."))
+      .catch(() => setApplicationMessage("Could not create application tracker."))
+  }
+
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -231,9 +250,13 @@ function UniversityDetail() {
           <button onClick={sharePage} className="rounded-full border border-gray-200 bg-surface px-4 py-2 text-sm text-muted hover:text-teal">
             Share
           </button>
+          <button onClick={addApplicationTracker} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light">
+            Track application
+          </button>
         </div>
       </div>
       {shareMessage && <p className="mt-2 text-sm text-teal">{shareMessage}</p>}
+      {applicationMessage && <p className="mt-2 text-sm text-teal">{applicationMessage}</p>}
 
       <div className="mt-4 flex flex-wrap gap-6">
         <span className="text-sm text-gray-700">
