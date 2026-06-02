@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { Link } from "react-router-dom"
 import type { University } from "@/data/universities"
 import UniversityImage from "@/components/ui/UniversityImage"
@@ -34,11 +35,13 @@ function UniversityCard({
             className="h-full w-full object-cover object-center"
           />
           <button
+            type="button"
+            aria-pressed={isSaved}
             onClick={(e) => {
               e.preventDefault()
               onToggleSaved?.(uni.id)
             }}
-            className="absolute top-3 right-3 cursor-pointer bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-white"
+            className={`university-follow-button ${isSaved ? "university-follow-button--saved" : ""}`}
           >
             {isSaved ? "Saved" : "+ Follow"}
           </button>
@@ -58,8 +61,8 @@ function UniversityCard({
             </div>
             <div className="min-w-0">
               <h3
-                className="min-h-[44px] text-lg font-bold leading-tight line-clamp-2"
-                style={{ color: uni.mainColor }}
+                className="university-card-title min-h-[44px] text-lg font-bold leading-tight line-clamp-2"
+                style={{ "--uni-color": uni.mainColor } as CSSProperties}
               >
                 {uni.name}
               </h3>
