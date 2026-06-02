@@ -7,6 +7,7 @@ export default function App() {
   const location = useLocation()
   const outlet = useOutlet()
   const reduceMotion = useReducedMotion()
+  const pageTransition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const }
 
   return (
     <div>
@@ -14,10 +15,10 @@ export default function App() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location.pathname}
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -6 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
+          exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -4 }}
+          transition={pageTransition}
         >
           {outlet}
         </motion.main>

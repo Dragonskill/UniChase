@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
 import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
@@ -235,8 +235,8 @@ function UniversityDetail() {
         />
         <div>
           <h1
-            className="text-3xl font-bold"
-            style={{ color: uni.mainColor }}
+            className="university-card-title text-3xl font-bold"
+            style={{ "--uni-color": uni.mainColor } as CSSProperties}
           >
             {uni.name}
           </h1>

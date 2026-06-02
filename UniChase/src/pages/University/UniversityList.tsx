@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
 import { universities as fallbackUniversities, type University } from "@/data/universities"
@@ -131,6 +131,7 @@ function UniversityList() {
   const [recentlyViewed, setRecentlyViewed] = useState(() => getRecentlyViewedUniversities())
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const showBackToTopRef = useRef(false)
   const reduceMotion = useReducedMotion()
 
   const queryFilters = useMemo(
@@ -161,10 +162,31 @@ function UniversityList() {
   }, [])
 
   useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 520)
-    onScroll()
+    let frame = 0
+
+    const updateBackToTop = () => {
+      frame = 0
+      const next = window.scrollY > 520
+      if (showBackToTopRef.current !== next) {
+        showBackToTopRef.current = next
+        setShowBackToTop(next)
+      }
+    }
+
+    const onScroll = () => {
+      if (frame === 0) {
+        frame = window.requestAnimationFrame(updateBackToTop)
+      }
+    }
+
+    updateBackToTop()
     window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (frame) {
+        window.cancelAnimationFrame(frame)
+      }
+    }
   }, [])
 
   useEffect(() => {
