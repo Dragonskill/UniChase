@@ -61,7 +61,8 @@ export default function UniversityImage({
   kind = "campus",
 }: UniversityImageProps) {
   const fallback = universityImageFallback(fallbackLabel, color, kind)
-  const [currentSrc, setCurrentSrc] = useState(src || fallback)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const currentSrc = !src || failedSrc === src ? fallback : src
 
   return (
     <img
@@ -69,7 +70,9 @@ export default function UniversityImage({
       alt={alt}
       loading={loading}
       decoding="async"
-      onError={() => setCurrentSrc(fallback)}
+      width={kind === "logo" ? 160 : 1200}
+      height={kind === "logo" ? 160 : 675}
+      onError={() => setFailedSrc(src || null)}
       className={className}
     />
   )

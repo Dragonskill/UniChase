@@ -3,63 +3,14 @@ import { ApiError } from "./errors.js"
 
 const cleanString = (maxLength) => z.string().trim().min(1).max(maxLength)
 const stringArray = z.array(cleanString(140)).max(80)
-const nullableString = (maxLength) =>
-  z
-    .union([cleanString(maxLength), z.literal(""), z.null()])
-    .optional()
-    .transform((value) => {
-      if (value === "" || value === undefined) {
-        return null
-      }
-
-      return value
-    })
-
-const nullableInt = z
-  .union([z.coerce.number().int().nonnegative(), z.null()])
-  .optional()
-  .transform((value) => value ?? null)
-
-const nullableBoolean = z
-  .union([z.boolean(), z.literal("true"), z.literal("false"), z.literal("1"), z.literal("0"), z.null()])
-  .optional()
-  .transform((value) => {
-    if (value === null || value === undefined) {
-      return null
-    }
-
-    if (typeof value === "boolean") {
-      return value
-    }
-
-    return ["true", "1"].includes(value)
-  })
-
-const nullableDate = z
-  .union([z.coerce.date(), z.literal(""), z.null()])
-  .optional()
-  .transform((value) => {
-    if (value === "" || value === undefined) {
-      return null
-    }
-
-    return value
-  })
-
-const optionalPositiveInt = z.coerce.number().int().positive().optional()
-const nullableUrl = (maxLength) =>
-  z
-    .union([z.string().trim().url().max(maxLength), z.literal(""), z.null()])
-    .optional()
-    .transform((value) => {
-      if (value === "" || value === undefined) {
-        return null
-      }
-
-      return value
-    })
-
-const verificationStatus = z.enum(["verified", "manually added", "needs verification"])
+const nullableString = (maxLength) => z.union([cleanString(maxLength), z.literal("").transform(() => null)]).nullable().optional()
+const nullableInt = z.preprocess((value) => value === "" ? null : value, z.coerce.number().int().min(0).max(2147483647).nullable().optional())
+const nullableBoolean = z.union([z.boolean(), z.enum(["true", "false", "1", "0"]).transform((value) => ["true", "1"].includes(value))]).nullable().optional()
+const nullableDate = z.preprocess((value) => value === "" ? null : value, z.coerce.date().nullable().optional())
+const optionalPositiveInt = z.coerce.number().int().positive().max(2147483647).optional()
+const webUrl = (maxLength) => z.string().trim().url().max(maxLength).refine((value) => /^https?:\/\//i.test(value), "Use an http or https URL")
+const nullableUrl = (maxLength) => z.union([webUrl(maxLength), z.literal("").transform(() => null)]).nullable().optional()
+const verificationStatus = z.enum(["verified", "manually added", "needs verification", "outdated"])
 const roleStatus = z.enum(["active", "inactive", "pending"])
 
 const universityBaseShape = {
@@ -67,16 +18,18 @@ const universityBaseShape = {
   slug: nullableString(220),
   koreanName: nullableString(180),
   city: cleanString(120),
+  province: nullableString(120),
+  verificationStatus: z.enum(["verified", "manually added", "needs verification", "outdated"]),
   country: cleanString(120),
-  universityType: z.enum(["public", "private"]).default("private"),
+  universityType: z.enum(["public", "private"]),
   qsRanking: nullableInt,
   qsRankingLabel: nullableString(40),
   qsRankingYear: nullableInt,
   rankingSourceNote: nullableString(800),
   qsSourceUrl: nullableUrl(800),
-  sourceUrls: z.array(z.string().trim().url().max(800)).max(20).default([]),
+  sourceUrls: z.array(webUrl(800)).max(20),
   lastVerifiedAt: nullableDate,
-  officialWebsite: z.string().trim().url().max(500),
+  officialWebsite: webUrl(500),
   imageUrl: nullableUrl(800),
   logoUrl: nullableUrl(800),
   campusImageUrl: nullableUrl(800),
@@ -85,12 +38,12 @@ const universityBaseShape = {
   imageLastVerifiedAt: nullableDate,
   description: cleanString(4000),
   fullDescription: nullableString(8000),
-  programs: stringArray.min(1),
+  programs: stringArray,
   tuitionMin: nullableInt,
   tuitionMax: nullableInt,
   tuitionCurrency: cleanString(12),
   admissionRequirements: stringArray,
-  languagesOfInstruction: stringArray.min(1),
+  languagesOfInstruction: stringArray,
   scholarshipInfo: nullableString(2000),
   hasScholarships: nullableBoolean,
   hasDormitory: nullableBoolean,
@@ -110,7 +63,7 @@ const universityBaseShape = {
     .union([z.string().trim().email().max(200), z.literal(""), z.null()])
     .optional()
     .transform((value) => {
-      if (value === "" || value === undefined) {
+      if (value === "") {
         return null
       }
 
@@ -137,11 +90,14 @@ function hasValidTuitionRange(data) {
 export const universityCreateSchema = z
   .object({
     ...universityBaseShape,
+    verificationStatus: universityBaseShape.verificationStatus.default("needs verification"),
+    universityType: universityBaseShape.universityType.default("private"),
+    sourceUrls: universityBaseShape.sourceUrls.default([]),
     country: universityBaseShape.country.default("South Korea"),
     tuitionCurrency: universityBaseShape.tuitionCurrency.default("KRW"),
     admissionRequirements: universityBaseShape.admissionRequirements.default([]),
-    hasScholarships: universityBaseShape.hasScholarships.default(false),
-    hasDormitory: universityBaseShape.hasDormitory.default(false),
+    hasScholarships: universityBaseShape.hasScholarships.default(null),
+    hasDormitory: universityBaseShape.hasDormitory.default(null),
     requiredDocuments: universityBaseShape.requiredDocuments.default([]),
     applicationSteps: universityBaseShape.applicationSteps.default([]),
     studyLevels: universityBaseShape.studyLevels.default([]),
@@ -180,8 +136,8 @@ export const universityImageUpdateSchema = z
   })
 
 export const adminLoginSchema = z.object({
-  email: z.string().trim().email().max(200),
-  password: z.string().min(8).max(200),
+  email: z.string().trim().email().max(200).transform((value) => value.toLowerCase()),
+  password: z.string().min(8).max(200).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must be at most 72 UTF-8 bytes"),
 })
 
 const booleanQuery = z
@@ -225,12 +181,12 @@ export const universityQuerySchema = z
 export const userRegisterSchema = z.object({
   name: cleanString(120),
   email: z.string().trim().email().max(200).transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(200),
+  password: z.string().min(8).max(200).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must be at most 72 UTF-8 bytes"),
 })
 
 export const userLoginSchema = z.object({
   email: z.string().trim().email().max(200).transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(200),
+  password: z.string().min(8).max(200).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must be at most 72 UTF-8 bytes"),
 })
 
 export const userProfileSchema = z
@@ -244,7 +200,7 @@ export const userProfileSchema = z
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one profile field is required",
-  })
+  }).refine((data) => data.budgetMin == null || data.budgetMax == null || data.budgetMin <= data.budgetMax, { message: "Minimum budget cannot exceed maximum budget" })
 
 export const savedUniversitySchema = z.object({
   universityId: z.coerce.number().int().positive(),
@@ -252,19 +208,9 @@ export const savedUniversitySchema = z.object({
 })
 
 export const compareQuerySchema = z.object({
-  ids: z
-    .string()
-    .trim()
-    .min(1)
-    .transform((value) =>
-      value
-        .split(",")
-        .map((id) => Number(id.trim()))
-        .filter((id) => Number.isInteger(id) && id > 0),
-    )
-    .refine((ids) => ids.length >= 2 && ids.length <= 4, {
-      message: "Compare requires 2 to 4 university ids",
-    }),
+  ids: z.string().trim().regex(/^\d+(,\d+){1,3}$/, "Compare requires 2 to 4 university ids")
+    .transform((value) => value.split(",").map(Number))
+    .refine((ids) => ids.every((id) => Number.isSafeInteger(id) && id > 0 && id <= 2147483647) && new Set(ids).size === ids.length, "Use 2 to 4 distinct positive university ids"),
 })
 
 export const recommendationSchema = z.object({
@@ -279,7 +225,7 @@ export const recommendationSchema = z.object({
   rankingMax: nullableInt,
   level: nullableString(80),
   scholarshipPreferred: nullableBoolean,
-})
+}).refine((data) => (data.tuitionMin == null || data.tuitionMax == null || data.tuitionMin <= data.tuitionMax) && (data.rankingMin == null || data.rankingMax == null || data.rankingMin <= data.rankingMax), { message: "Minimum values cannot exceed maximum values" })
 
 export const userDeadlineSchema = z.object({
   universityId: z.coerce.number().int().positive(),
@@ -319,7 +265,7 @@ export const studentCouncilCreateSchema = z.object({
   contactEmail: z
     .union([z.string().trim().email().max(200), z.literal(""), z.null()])
     .optional()
-    .transform((value) => (value === "" || value === undefined ? null : value)),
+    .transform((value) => (value === "" ? null : value)),
   sourceUrl: nullableUrl(800),
   verificationStatus: verificationStatus.default("needs verification"),
   lastVerifiedAt: nullableDate,
@@ -344,7 +290,7 @@ export const studentCouncilRoleCreateSchema = z.object({
   contactEmail: z
     .union([z.string().trim().email().max(200), z.literal(""), z.null()])
     .optional()
-    .transform((value) => (value === "" || value === undefined ? null : value)),
+    .transform((value) => (value === "" ? null : value)),
   contactUrl: nullableUrl(800),
   avatarUrl: nullableUrl(800),
   status: roleStatus.default("pending"),
@@ -367,7 +313,7 @@ export const moderatorProfileSchema = z
     contactEmail: z
       .union([z.string().trim().email().max(200), z.literal(""), z.null()])
       .optional()
-      .transform((value) => (value === "" || value === undefined ? null : value)),
+      .transform((value) => (value === "" ? null : value)),
   })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
@@ -427,31 +373,14 @@ export const communityPostCreateSchema = z.object({
   tags: z.array(cleanString(40)).max(10).default([]),
 })
 
-export const communityPostUpdateSchema = communityPostCreateSchema
-  .extend({
-    status: communityStatus.optional(),
-    pinned: z.boolean().optional(),
-    officialAnswer: nullableString(4000),
-  })
-  .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one post field is required",
-  })
+export const communityPostUpdateSchema = communityPostCreateSchema.partial().strict().refine((data) => Object.keys(data).length > 0, { message: "At least one post field is required" })
 
 export const communityCommentCreateSchema = z.object({
   content: cleanString(4000),
   parentCommentId: z.coerce.number().int().positive().nullable().optional(),
 })
 
-export const communityCommentUpdateSchema = z
-  .object({
-    content: cleanString(4000).optional(),
-    status: commentStatus.optional(),
-    official: z.boolean().optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one comment field is required",
-  })
+export const communityCommentUpdateSchema = z.object({ content: cleanString(4000) }).strict()
 
 export const communityReportSchema = z.object({
   reason: reportReason.default("other"),
@@ -497,6 +426,18 @@ export const analyticsEventSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional().default({}),
 })
 
+export const managedContentKinds = ["news", "forum", "qa", "members"]
+export const managedContentSchema = z
+  .object({
+    payload: z.array(z.record(z.string(), z.unknown())).max(500),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (Buffer.byteLength(JSON.stringify(value.payload), "utf8") > 512_000) {
+      context.addIssue({ code: "custom", path: ["payload"], message: "Managed content cannot exceed 512 KB" })
+    }
+  })
+
 export const onboardingSchema = z.object({
   desiredMajor: nullableString(140),
   degreeLevel: nullableString(80),
@@ -514,9 +455,9 @@ export const onboardingSchema = z.object({
   nationality: nullableString(120),
   testStatus: nullableString(180),
   onboardingCompleted: z.boolean().default(false),
-})
+}).refine((data) => (data.budgetMin == null || data.budgetMax == null || data.budgetMin <= data.budgetMax) && (data.qsRankMin == null || data.qsRankMax == null || data.qsRankMin <= data.qsRankMax), { message: "Minimum onboarding values cannot exceed maximum values" })
 
-export const onboardingPatchSchema = onboardingSchema.partial().refine((data) => Object.keys(data).length > 0, {
+export const onboardingPatchSchema = z.object(onboardingSchema.shape).partial().refine((data) => Object.keys(data).length > 0, {
   message: "At least one onboarding field is required",
 })
 
@@ -530,9 +471,9 @@ export const applicationCreateSchema = z.object({
   resultDate: nullableDate,
   notes: nullableString(3000),
   priority: z.enum(["low", "normal", "high"]).default("normal"),
-})
+}).refine((data) => !data.submittedDate || !data.resultDate || data.submittedDate <= data.resultDate, { message: "Result date cannot precede submission date", path: ["resultDate"] })
 
-export const applicationUpdateSchema = applicationCreateSchema
+export const applicationUpdateSchema = z.object(applicationCreateSchema.shape)
   .omit({ universityId: true })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
@@ -563,7 +504,7 @@ export const userDocumentCreateSchema = z.object({
   fileSize: nullableInt,
   expirationDate: nullableDate,
   notes: nullableString(2000),
-})
+}).strict()
 
 export const userDocumentUpdateSchema = userDocumentCreateSchema.partial().refine((data) => Object.keys(data).length > 0, {
   message: "At least one document field is required",
@@ -604,7 +545,9 @@ export function validateBody(schema) {
       return
     }
 
-    req.body = parsed.data
+    req.body = req.method === "PATCH" || req.method === "PUT"
+      ? Object.fromEntries(Object.entries(parsed.data).filter(([key]) => Object.hasOwn(req.body, key)))
+      : parsed.data
     next()
   }
 }
@@ -628,3 +571,14 @@ export function parseCompareQuery(query) {
 
   return parsed.data
 }
+
+const programShape = {
+  universityId: z.coerce.number().int().positive(),
+  slug: z.string().trim().min(3).max(220).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: cleanString(180), degreeLevel: cleanString(80), languageOfInstruction: cleanString(80),
+  tuitionMin: nullableInt, tuitionMax: nullableInt, tuitionCurrency: cleanString(12).default('KRW'),
+  duration: nullableString(180), requirements: stringArray.default([]), requiredDocuments: stringArray.default([]),
+  applicationPeriod: nullableString(500), careerOutcomes: stringArray.default([]), officialLink: nullableUrl(800),
+}
+export const programCreateSchema = z.object(programShape).refine(hasValidTuitionRange, { message: 'Minimum tuition cannot exceed maximum tuition' })
+export const programUpdateSchema = z.object(programShape).partial().refine(hasValidTuitionRange, { message: 'Minimum tuition cannot exceed maximum tuition' })

@@ -1,3 +1,4 @@
+import { optionalStudent } from "../auth.js"
 import { Router } from "express"
 import { asyncHandler } from "../errors.js"
 import { analyticsEventSchema, validateBody } from "../validation.js"
@@ -7,11 +8,12 @@ export function createAnalyticsRouter(prisma) {
 
   router.post(
     "/event",
+    optionalStudent(prisma),
     validateBody(analyticsEventSchema),
     asyncHandler(async (req, res) => {
       const event = await prisma.analyticsEvent.create({
         data: {
-          userId: req.body.userId,
+          userId: req.user?.id ?? null,
           sessionId: req.body.sessionId,
           eventType: req.body.eventType,
           entityType: req.body.entityType,

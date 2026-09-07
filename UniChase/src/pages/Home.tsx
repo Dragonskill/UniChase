@@ -18,6 +18,7 @@ export default function Home() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-6 py-6">
+      <h1 className="sr-only">UniChase: discover universities and student life in South Korea</h1>
       <HeroCarousel />
       <ReviewsSection />
       <NewsSection />

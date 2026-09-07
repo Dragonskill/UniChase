@@ -3,190 +3,105 @@ import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
 import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
 import UniversityImage from "@/components/ui/UniversityImage"
-import { createApplication, fetchUniversity, saveDeadlineToAccount } from "@/lib/api"
+import { createApplication, fetchUniversity, fetchUniversityPrograms, fetchUniversityReviews, saveDeadlineToAccount, submitUniversityReview, type Program, type UniversityReview } from "@/lib/api"
 import { applySeo } from "@/lib/seo"
 import { addRecentlyViewedUniversity, getToken, saveLocalDeadline } from "@/lib/storage"
+import { useUniversityState } from "@/lib/universityState"
+import { formatUniversityDate as formatDate, verificationLabel, universityVerification } from "@/lib/universityDisplay"
 
-function formatDate(value?: string | null) {
-  if (!value) {
-    return "Not announced"
-  }
+function infoList(values?: string[]) { return values?.length ? values : ["Not verified. Check the official university guide."] }
+function roleTitle(role: StudentCouncilRole) { return role.displayName ? `${role.roleTitle} - ${role.displayName}` : role.roleTitle }
 
-  return new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value))
-}
-
-function infoList(values?: string[]) {
-  return values && values.length > 0 ? values : ["Information will be updated when the university publishes details."]
-}
-
-function verificationLabel(status?: string) {
-  if (status === "verified") {
-    return "Verified"
-  }
-
-  if (status === "manually added") {
-    return "Manually Added"
-  }
-
-  return "Needs Verification"
-}
-
-function roleTitle(role: StudentCouncilRole) {
-  return role.displayName ? `${role.roleTitle} - ${role.displayName}` : role.roleTitle
-}
-
-function findFallbackUniversity(identifier: string) {
-  const numericId = Number(identifier)
-  return fallbackUniversities.find((university) => university.slug === identifier || university.id === numericId)
-}
-
-function UniversityDetail() {
+export default function UniversityDetail() {
   const { id, idOrSlug } = useParams()
   const identifier = idOrSlug || id || ""
-  const [loadedUni, setLoadedUni] = useState<University>()
-  const [isLoading, setIsLoading] = useState(Boolean(identifier))
-  const [errorMessage, setErrorMessage] = useState(() => (identifier ? "" : "University not found."))
+  const [result, setResult] = useState<{ identifier: string; university?: University; error?: string; offline?: boolean }>()
+  const uni = result?.identifier === identifier ? result.university : undefined
+  const isLoading = result?.identifier !== identifier
+  const errorMessage = result?.error
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [reviews, setReviews] = useState<UniversityReview[]>([])
+  const [reviewAverage, setReviewAverage] = useState<number | null>(null)
+  const [reviewForm, setReviewForm] = useState({ academics: 5, campusLife: 5, dormitory: 4, internationalSupport: 5, difficulty: 3, costValue: 4, location: 5, overallRating: 5, comment: "" })
+  const [reviewMessage, setReviewMessage] = useState("")
+  const [reviewPending, setReviewPending] = useState(false)
   const [deadlineMessage, setDeadlineMessage] = useState("")
   const [applicationMessage, setApplicationMessage] = useState("")
+  const [applicationPending, setApplicationPending] = useState(false)
   const [shareMessage, setShareMessage] = useState("")
   const reduceMotion = useReducedMotion()
-  const uni = loadedUni
-  const isBackendLoaded = Boolean(loadedUni)
+  const state = useUniversityState()
 
   useEffect(() => {
-    let ignore = false
-
-    if (!identifier) {
-      return () => {
-        ignore = true
-      }
-    }
-
-    fetchUniversity(identifier)
-      .then((item) => {
-        if (!ignore) {
-          setLoadedUni(item)
-          setErrorMessage("")
-        }
-      })
-      .catch(() => {
-        if (!ignore) {
-          const fallbackUniversity = findFallbackUniversity(identifier)
-          if (fallbackUniversity) {
-            setLoadedUni(fallbackUniversity)
-            setErrorMessage("")
-          } else {
-            setErrorMessage("Could not load this university from the UniChase API.")
-          }
-        }
-      })
-      .finally(() => {
-        if (!ignore) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      ignore = true
-    }
+    let active = true
+    fetchUniversity(identifier).then((university) => { if (active) setResult({ identifier, university }) }).catch(() => {
+      if (!active) return
+      const university = fallbackUniversities.find((item) => item.slug === identifier || item.id === Number(identifier))
+      setResult({ identifier, university, offline: true, error: university ? undefined : "University not found. Please try again or return to the directory." })
+    })
+    return () => { active = false }
   }, [identifier])
 
   useEffect(() => {
-    if (!uni) {
-      return
-    }
-
-    applySeo({
-      title: `${uni.name} | UniChase`,
-      description: uni.description,
-      image: uni.image,
-      canonicalPath: `/universities/${uni.slug || uni.id}`,
-      structuredData: {
-        "@context": "https://schema.org",
-        "@type": "CollegeOrUniversity",
-        name: uni.name,
-        alternateName: uni.koreanName,
-        url: uni.officialWebsite,
-        logo: uni.logo,
-        address: uni.contact?.address,
-      },
-    })
-    addRecentlyViewedUniversity({
-      id: uni.id,
-      name: uni.name,
-      slug: uni.slug,
-      city: uni.city || uni.location,
-    })
+    if (!uni) return
+    let active = true
+    fetchUniversityPrograms(uni.slug || uni.id).then((items) => { if (active) setPrograms(items) }).catch(() => { if (active) setPrograms([]) })
+    fetchUniversityReviews(uni.id).then((response) => {
+      if (!active) return
+      setReviews(response.data)
+      setReviewAverage(response.meta?.average ?? null)
+    }).catch(() => { if (active) { setReviews([]); setReviewAverage(null) } })
+    applySeo({ title: `${uni.name} | UniChase`, description: uni.description, image: uni.image, canonicalPath: `/universities/${uni.slug || uni.id}`, structuredData: { "@context": "https://schema.org", "@type": "CollegeOrUniversity", name: uni.name, alternateName: uni.koreanName, url: uni.officialWebsite, logo: uni.logo, address: uni.contact?.address } })
+    addRecentlyViewedUniversity({ id: uni.id, name: uni.name, slug: uni.slug, city: uni.city || uni.location })
+    return () => { active = false }
   }, [uni])
 
   const sharePage = async () => {
-    const url = window.location.href
-
-    if (navigator.share) {
-      await navigator.share({ title: uni?.name || "UniChase university", url }).catch(() => undefined)
-      return
-    }
-
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url)
-      setShareMessage("Link copied.")
-    } else {
-      setShareMessage(url)
-    }
-    window.setTimeout(() => setShareMessage(""), 2200)
+    try {
+      if (navigator.share) await navigator.share({ title: uni?.name, url: window.location.href })
+      else { await navigator.clipboard.writeText(window.location.href); setShareMessage("Link copied.") }
+    } catch { setShareMessage("Use your browser address bar to copy the link.") }
   }
 
-  const saveDeadline = (deadlineType: "application" | "scholarship" | "document") => {
-    if (!uni) {
-      return
-    }
-
-    saveLocalDeadline({ universityId: uni.id, deadlineType, important: true })
-    const token = getToken()
-
-    if (token) {
-      saveDeadlineToAccount(token, {
-        universityId: uni.id,
-        deadlineType,
-        important: true,
-      }).catch(() => undefined)
-    }
-
-    setDeadlineMessage("Deadline saved to your dashboard.")
-  }
-
-  const addApplicationTracker = () => {
+  const saveDeadline = async (deadlineType: "application" | "scholarship" | "document") => {
     if (!uni) return
+    const date = uni.deadlines?.[`${deadlineType}Deadline`]
+    if (!date || Number.isNaN(Date.parse(date))) { setDeadlineMessage("A verified deadline has not been published yet."); return }
+    try {
+      const token = getToken()
+      if (token) await saveDeadlineToAccount(token, { universityId: uni.id, deadlineType, important: true })
+      saveLocalDeadline({ universityId: uni.id, deadlineType, important: true })
+      setDeadlineMessage("Deadline saved to your dashboard.")
+    } catch { setDeadlineMessage("Could not save this deadline. Please try again.") }
+  }
+
+  const addApplicationTracker = async () => {
+    if (!uni || applicationPending) return
     const token = getToken()
-
-    if (!token) {
-      setApplicationMessage("Login to add this university to your application tracker.")
-      return
-    }
-
-    createApplication(token, {
-      universityId: uni.id,
-      status: "Interested",
-      applicationDeadline: uni.deadlines?.applicationDeadline || null,
-    })
-      .then(() => setApplicationMessage("Application tracker created in your dashboard."))
-      .catch(() => setApplicationMessage("Could not create application tracker."))
+    if (!token) { setApplicationMessage("Log in to add this university to your application tracker."); return }
+    setApplicationPending(true)
+    try {
+      await createApplication(token, { universityId: uni.id, status: "Interested", applicationDeadline: uni.deadlines?.applicationDeadline || null })
+      setApplicationMessage("Application tracker created in your dashboard.")
+    } catch { setApplicationMessage("Could not create application tracker. Please try again.") }
+    finally { setApplicationPending(false) }
   }
 
-  if (isLoading) {
-    return (
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="h-64 w-full rounded-2xl bg-cream-dark animate-pulse" />
-        <div className="mt-6 h-8 w-64 rounded bg-cream-dark animate-pulse" />
-        <div className="mt-4 h-4 w-full max-w-2xl rounded bg-cream-dark animate-pulse" />
-      </div>
-    )
+  const submitReview = async () => {
+    if (!uni || reviewPending) return
+    const token = getToken()
+    if (!token) { setReviewMessage("Log in to submit a review."); return }
+    if (reviewForm.comment.trim().length < 20) { setReviewMessage("Please write at least 20 characters."); return }
+    setReviewPending(true)
+    try {
+      await submitUniversityReview(token, uni.id, reviewForm)
+      setReviewMessage("Your review was submitted and will appear after moderator approval.")
+      setReviewForm((current) => ({ ...current, comment: "" }))
+    } catch { setReviewMessage("Could not submit your review. Your text is still here; please try again.") }
+    finally { setReviewPending(false) }
   }
 
+  if (isLoading) return <div className="max-w-6xl mx-auto px-6 py-8" role="status" aria-label="Loading university"><div className="h-64 rounded-2xl bg-cream-dark animate-pulse" /></div>
   if (!uni) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-8">
@@ -200,7 +115,7 @@ function UniversityDetail() {
 
   return (
     <motion.div
-      key={`${uni.id}-${isBackendLoaded ? "loaded" : "fallback"}`}
+      key={uni.id}
       initial={reduceMotion ? false : { opacity: 0.94 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
@@ -243,19 +158,19 @@ function UniversityDetail() {
           <p className="text-gray-500">{uni.location}</p>
         </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-gray-200 bg-cream px-3 py-1 text-xs text-muted">
-            {uni.imageLastVerifiedAt || uni.lastVerifiedAt ? "Verified" : "Needs verification"}
+            {universityVerification(uni)}
           </span>
-          <button onClick={sharePage} className="rounded-full border border-gray-200 bg-surface px-4 py-2 text-sm text-muted hover:text-teal">
+          <button type="button" onClick={() => state.toggleFollowed(uni.id)} aria-pressed={state.followedIds.includes(uni.id)} className="rounded-full border border-teal px-4 py-2 text-sm text-teal">{state.followedIds.includes(uni.id) ? "Followed" : "+ Follow"}</button><button type="button" onClick={() => state.toggleSaved(uni.id)} aria-pressed={state.savedIds.includes(uni.id)} className="rounded-full border border-gray-200 px-4 py-2 text-sm">{state.savedIds.includes(uni.id) ? "Saved" : "Save"}</button><button type="button" disabled={!state.compareIds.includes(uni.id) && state.compareIds.length >= 4} onClick={() => state.toggleCompare(uni.id)} aria-pressed={state.compareIds.includes(uni.id)} className="rounded-full border border-gray-200 px-4 py-2 text-sm">{state.compareIds.includes(uni.id) ? "In comparison" : "Compare"}</button><button onClick={sharePage} className="rounded-full border border-gray-200 bg-surface px-4 py-2 text-sm text-muted hover:text-teal">
             Share
           </button>
-          <button onClick={addApplicationTracker} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light">
+          <button disabled={applicationPending} onClick={addApplicationTracker} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light">
             Track application
           </button>
         </div>
       </div>
-      {shareMessage && <p className="mt-2 text-sm text-teal">{shareMessage}</p>}
+      {state.message && <p role="status" className="mt-2 text-sm text-muted">{state.message}</p>}{result?.offline && <p className="mt-2 text-sm text-muted">Showing the saved directory. Live updates are temporarily unavailable.</p>}{shareMessage && <p className="mt-2 text-sm text-teal">{shareMessage}</p>}
       {applicationMessage && <p className="mt-2 text-sm text-teal">{applicationMessage}</p>}
 
       <div className="mt-4 flex flex-wrap gap-6">
@@ -304,6 +219,15 @@ function UniversityDetail() {
               <span key={program} className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-gray-700">{program}</span>
             ))}
           </div>
+          {programs.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {programs.slice(0, 4).map((program) => (
+                <Link key={program.slug} to={`/programs/${program.slug}`} className="block text-sm text-teal hover:underline">
+                  {program.name} program details
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bg-surface rounded-2xl shadow-sm p-5">
@@ -418,9 +342,60 @@ function UniversityDetail() {
             ))}
           </div>
         </section>
+
+        <section className="bg-surface rounded-2xl shadow-sm p-5 md:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-navy">Student Reviews</h2>
+              <p className="text-sm text-muted">
+                {reviewAverage ? `${reviewAverage}/5 average from ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "No reviews yet."}
+              </p>
+            </div>
+            <Link to="/reviews" className="text-sm text-teal hover:underline">All reviews</Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-3">
+              {reviews.length === 0 && <p className="text-sm text-muted">Be the first to add a student review.</p>}
+              {reviews.slice(0, 3).map((review) => (
+                <div key={review.id || review.comment} className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <strong className="text-navy">{review.author?.name || "Student"}</strong>
+                    <span className="text-teal font-semibold">{review.overallRating}/5</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div className="grid grid-cols-2 gap-2">
+                {(["academics", "campusLife", "dormitory", "internationalSupport", "difficulty", "costValue", "location", "overallRating"] as const).map((field) => (
+                  <label key={field} className="text-xs text-gray-700">
+                    {field.replace(/([A-Z])/g, " $1")}
+                    <select
+                      value={reviewForm[field]}
+                      onChange={(event) => setReviewForm({ ...reviewForm, [field]: Number(event.target.value) })}
+                      className="mt-1 w-full bg-cream border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+                    >
+                      {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <textarea
+                value={reviewForm.comment}
+                onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })}
+                rows={4}
+                aria-label="Written university review" maxLength={10000} placeholder="Share helpful details for future applicants..."
+                className="mt-3 w-full bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+              />
+              <button disabled={reviewPending} onClick={submitReview} className="mt-2 text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy-light transition-colors">Submit review</button>
+              {reviewMessage && <p className="mt-2 text-sm text-teal">{reviewMessage}</p>}
+            </div>
+          </div>
+        </section>
       </div>
     </motion.div>
   )
 }
-
-export default UniversityDetail

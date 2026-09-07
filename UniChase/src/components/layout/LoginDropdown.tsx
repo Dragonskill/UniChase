@@ -26,14 +26,17 @@ export default function LoginDropdown() {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    function handleKey(event: KeyboardEvent) { if (event.key === 'Escape') setOpen(false) }
     function syncUser() {
       setUser(getToken() ? getStoredUser<StudentUser>() : null)
     }
 
     window.addEventListener(authChangeEvent, syncUser)
+    document.addEventListener('keydown', handleKey)
     window.addEventListener('storage', syncUser)
     return () => {
       window.removeEventListener(authChangeEvent, syncUser)
+      document.removeEventListener('keydown', handleKey)
       window.removeEventListener('storage', syncUser)
     }
   }, [])
@@ -125,6 +128,7 @@ export default function LoginDropdown() {
                 <form onSubmit={submitLogin} className="flex flex-col gap-3">
                   <input
                     type="email"
+                    aria-label="Email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     autoComplete="email"

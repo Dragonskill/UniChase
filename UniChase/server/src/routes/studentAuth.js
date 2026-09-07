@@ -1,3 +1,4 @@
+import { createAuthLimiter } from "../rateLimits.js"
 import { Router } from "express"
 import bcrypt from "bcryptjs"
 import { signStudentToken, verifyPassword } from "../auth.js"
@@ -19,6 +20,7 @@ function mapUser(user) {
 
 export function createStudentAuthRouter(prisma) {
   const router = Router()
+  router.use(createAuthLimiter())
 
   router.post(
     "/register",

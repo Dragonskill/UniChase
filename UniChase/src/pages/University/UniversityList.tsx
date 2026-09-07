@@ -3,18 +3,20 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
 import { universities as fallbackUniversities, type University } from "@/data/universities"
 import UniversityCard from "@/components/ui/UniversityCard"
-import { fetchFilteredUniversities, removeUniversityFromAccount, saveUniversityToAccount } from "@/lib/api"
+import { fetchUniversityPage } from "@/lib/api"
 import {
   addRecentSearch,
   getRecentlyViewedUniversities,
-  getCompareUniversityIds,
+
   getRecentSearches,
-  getSavedUniversityIds,
-  getToken,
-  toggleCompareUniversity,
-  toggleSavedUniversity,
+
+
+
+
 } from "@/lib/storage"
 import { applySeo } from "@/lib/seo"
+import { useUniversityState } from "@/lib/universityState"
+import { universitySearchScore } from "@/lib/universitySearch"
 
 type FilterState = {
   search: string
@@ -78,26 +80,7 @@ function applyFallbackFilters(items: University[], filters: FilterState) {
     const rank = rankingNumber(university)
     const tuitionMin = university.tuition?.min ?? null
     const tuitionMax = university.tuition?.max ?? null
-    const searchable = [
-      university.name,
-      university.koreanName,
-      university.city,
-      university.location,
-      university.description,
-      ...(university.programs || []),
-      university.studentCouncil?.name,
-      ...(university.studentCouncil?.roles || []).flatMap((role) => [
-        role.roleTitle,
-        role.department,
-        role.description,
-        ...(role.responsibilities || []),
-      ]),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
-
-    if (search && !searchable.includes(search)) return false
+    if (search && universitySearchScore(university, search) < 0) return false
     if (filters.city && !normalized(university.city || university.location).includes(normalized(filters.city))) return false
     if (filters.major && !(university.programs || []).some((program) => normalized(program).includes(normalized(filters.major)))) return false
     if (filters.language && !(university.languageOfInstruction || []).some((language) => normalized(language).includes(normalized(filters.language)))) return false
@@ -122,11 +105,18 @@ function UniversityList() {
     ...initialFilters,
     search: searchParams.get("search") || "",
   }))
+  const [page, setPage] = useState(1)
+  const [urlSearch, setUrlSearch] = useState(searchParams.get("search") || "")
+  if (urlSearch !== (searchParams.get("search") || "")) {
+    setUrlSearch(searchParams.get("search") || "")
+    setFilters((current) => ({ ...current, search: searchParams.get("search") || "" }))
+    setPage(1)
+  }
+  const [total, setTotal] = useState(0)
   const [universityList, setUniversityList] = useState<University[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
-  const [savedIds, setSavedIds] = useState<number[]>(() => getSavedUniversityIds())
-  const [compareIds, setCompareIds] = useState<number[]>(() => getCompareUniversityIds())
+  const { savedIds, followedIds, compareIds, toggleSaved: handleSaved, toggleFollowed: handleFollowed, toggleCompare: handleCompare, message: stateMessage, pending } = useUniversityState()
   const [recentSearches, setRecentSearches] = useState<string[]>(() => getRecentSearches())
   const [recentlyViewed, setRecentlyViewed] = useState(() => getRecentlyViewedUniversities())
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -136,6 +126,8 @@ function UniversityList() {
 
   const queryFilters = useMemo(
     () => ({
+      page,
+      limit: 12,
       search: filters.search,
       city: filters.city,
       rankingMin: filters.rankingMin,
@@ -150,7 +142,7 @@ function UniversityList() {
       level: filters.level,
       sort: filters.sort,
     }),
-    [filters],
+    [filters, page],
   )
 
   useEffect(() => {
@@ -200,18 +192,20 @@ function UniversityList() {
 
     const timeout = window.setTimeout(() => {
       setIsLoading(true)
-      fetchFilteredUniversities(queryFilters)
-        .then((items) => {
+      fetchUniversityPage(queryFilters)
+        .then(({ data: items, meta }) => {
           if (!ignore) {
-            setUniversityList(items.length > 0 ? items : applyFallbackFilters(fallbackUniversities, queryFilters))
+            setUniversityList(items)
+            setTotal(meta.total)
             setErrorMessage("")
           }
         })
         .catch(() => {
           if (!ignore) {
             const fallbackItems = applyFallbackFilters(fallbackUniversities, queryFilters)
-            setUniversityList(fallbackItems)
-            setErrorMessage(fallbackItems.length > 0 ? "" : "Could not load universities from the UniChase API. Start the API and seed the database, then try again.")
+            setUniversityList(fallbackItems.slice((page - 1) * 12, page * 12))
+            setTotal(fallbackItems.length)
+            setErrorMessage("Showing the saved directory. Live updates are temporarily unavailable.")
           }
         })
         .finally(() => {
@@ -225,9 +219,10 @@ function UniversityList() {
       ignore = true
       window.clearTimeout(timeout)
     }
-  }, [queryFilters])
+  }, [queryFilters, page])
 
   const updateFilter = (key: keyof FilterState, value: string) => {
+    setPage(1)
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
@@ -244,38 +239,21 @@ function UniversityList() {
   }
 
   const resetFilters = () => {
+    setPage(1)
     setFilters(initialFilters)
     setSearchParams({})
   }
 
-  const handleSaved = (id: number) => {
-    const next = toggleSavedUniversity(id)
-    setSavedIds(next)
-
-    const token = getToken()
-    if (token) {
-      if (next.includes(id)) {
-        saveUniversityToAccount(token, id).catch(() => undefined)
-      } else {
-        removeUniversityFromAccount(token, id).catch(() => undefined)
-      }
-    }
-  }
-
-  const handleCompare = (id: number) => {
-    const next = toggleCompareUniversity(id)
-    setCompareIds(next)
-  }
-
   return (
     <div className="page-fade max-w-6xl mx-auto px-6 py-8">
+      <h1 className="sr-only">South Korean universities</h1>
       <div className="mb-4 flex items-center gap-2 text-sm text-muted">
         <Link to="/" className="hover:text-teal">Home</Link>
         <span>/</span>
         <span className="text-ink">Universities</span>
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">Showing {isLoading ? "..." : universityList.length} universities</p>
+        <p className="text-sm text-muted">Showing {isLoading ? "..." : total} universities</p>
         <button
           type="button"
           onClick={() => setFiltersOpen((current) => !current)}
@@ -285,28 +263,27 @@ function UniversityList() {
           {filtersOpen ? "Hide filters" : "Show filters"}
         </button>
       </div>
-      <form onSubmit={submitFilters} className="mb-6 bg-surface rounded-2xl shadow-sm p-4">
+      <datalist id="university-suggestions">{fallbackUniversities.filter((uni) => filters.search.length > 1 && universitySearchScore(uni, filters.search) >= 0).slice(0, 6).map((uni) => <option key={uni.id} value={uni.name} />)}</datalist><form onSubmit={submitFilters} className="mb-6 bg-surface rounded-2xl shadow-sm p-4">
         <div className={`${filtersOpen ? "grid" : "hidden"} grid-cols-1 sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3`}>
           <input
             value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
-            placeholder="Search universities, majors, city"
+            aria-label="Search universities, majors, city" list="university-suggestions" placeholder="Search universities, majors, city"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
           <input
             value={filters.city}
             onChange={(e) => updateFilter("city", e.target.value)}
-            placeholder="City"
+            aria-label="City" placeholder="City"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
           <input
             value={filters.major}
             onChange={(e) => updateFilter("major", e.target.value)}
-            placeholder="Major or department"
+            aria-label="Major or department" placeholder="Major or department"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
-          <select
-            value={filters.language}
+          <select aria-label="language filter" value={filters.language}
             onChange={(e) => updateFilter("language", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
@@ -317,42 +294,40 @@ function UniversityList() {
           <input
             value={filters.rankingMin}
             onChange={(e) => updateFilter("rankingMin", e.target.value)}
-            placeholder="QS rank min"
+            aria-label="QS rank min" placeholder="QS rank min"
             inputMode="numeric"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
           <input
             value={filters.rankingMax}
             onChange={(e) => updateFilter("rankingMax", e.target.value)}
-            placeholder="QS rank max"
+            aria-label="QS rank max" placeholder="QS rank max"
             inputMode="numeric"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
           <input
             value={filters.tuitionMin}
             onChange={(e) => updateFilter("tuitionMin", e.target.value)}
-            placeholder="Tuition min"
+            aria-label="Tuition min" placeholder="Tuition min"
             inputMode="numeric"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
           <input
             value={filters.tuitionMax}
             onChange={(e) => updateFilter("tuitionMax", e.target.value)}
-            placeholder="Tuition max"
+            aria-label="Tuition max" placeholder="Tuition max"
             inputMode="numeric"
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           />
-          <select
-            value={filters.dormitory}
+          <select aria-label="dormitory filter" value={filters.dormitory}
             onChange={(e) => updateFilter("dormitory", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
             <option value="">Dormitory</option>
             <option value="true">Available</option>
-            <option value="false">Not required</option>
+            <option value="false">Unavailable</option>
           </select>
-          <select
-            value={filters.type}
+          <select aria-label="type filter" value={filters.type}
             onChange={(e) => updateFilter("type", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
@@ -360,8 +335,7 @@ function UniversityList() {
             <option value="public">Public</option>
             <option value="private">Private</option>
           </select>
-          <select
-            value={filters.deadline}
+          <select aria-label="deadline filter" value={filters.deadline}
             onChange={(e) => updateFilter("deadline", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
@@ -371,8 +345,7 @@ function UniversityList() {
             <option value="closed">Closed</option>
             <option value="upcoming">Upcoming</option>
           </select>
-          <select
-            value={filters.level}
+          <select aria-label="level filter" value={filters.level}
             onChange={(e) => updateFilter("level", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
@@ -380,8 +353,7 @@ function UniversityList() {
             <option value="undergraduate">Undergraduate</option>
             <option value="graduate">Graduate</option>
           </select>
-          <select
-            value={filters.sort}
+          <select aria-label="sort filter" value={filters.sort}
             onChange={(e) => updateFilter("sort", e.target.value)}
             className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal"
           >
@@ -432,7 +404,7 @@ function UniversityList() {
         )}
       </form>
 
-      <motion.div
+      {stateMessage && <p role="status" className="mb-4 text-sm text-muted">{stateMessage}</p>}<motion.div
         key={`${isLoading}-${universityList.length}`}
         aria-busy={isLoading}
         initial={reduceMotion ? false : { opacity: 0.94 }}
@@ -461,23 +433,26 @@ function UniversityList() {
 
         {!isLoading && errorMessage && (
           <div className="col-span-full bg-surface rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-bold text-navy">University data is not connected yet</h2>
             <p className="mt-2 text-sm text-muted">{errorMessage}</p>
           </div>
         )}
 
-        {!isLoading && !errorMessage && universityList.length === 0 && (
+        {!isLoading && universityList.length === 0 && (
           <div className="col-span-full bg-surface rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-bold text-navy">No universities found</h2>
             <p className="mt-2 text-sm text-muted">Try a broader search or reset the filters.</p>
           </div>
         )}
 
-        {!isLoading && !errorMessage && universityList.map((uni) => (
+        {!isLoading && universityList.map((uni) => (
           <UniversityCard
             key={uni.id}
             uni={uni}
             isSaved={savedIds.includes(uni.id)}
+            isFollowed={followedIds.includes(uni.id)}
+            savePending={pending.includes('saved-' + uni.id)}
+            followPending={pending.includes('followed-' + uni.id)}
+            onToggleFollowed={handleFollowed}
             isCompared={compareIds.includes(uni.id)}
             compareDisabled={compareIds.length >= 4}
             onToggleSaved={handleSaved}
@@ -485,10 +460,10 @@ function UniversityList() {
           />
         ))}
       </motion.div>
-      {showBackToTop && (
+      {total > 12 && <nav aria-label="University result pages" className="mt-6 flex items-center justify-center gap-4"><button type="button" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)} className="rounded-full border border-gray-200 px-4 py-2 text-sm disabled:opacity-40">Previous</button><span className="text-sm text-muted">Page {page} of {Math.ceil(total / 12)}</span><button type="button" disabled={page >= Math.ceil(total / 12) || isLoading} onClick={() => setPage(page + 1)} className="rounded-full border border-gray-200 px-4 py-2 text-sm disabled:opacity-40">Next</button></nav>}{showBackToTop && (
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
           className="fixed bottom-5 right-5 z-40 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
         >
           Back to top

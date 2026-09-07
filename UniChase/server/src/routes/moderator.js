@@ -1,3 +1,5 @@
+import { canAccess, requirePermission, permit } from "../permissions.js"
+import { parsePagination } from "../pagination.js"
 import { Router } from "express"
 import { requireAdmin } from "../auth.js"
 import { ApiError, asyncHandler, isPrismaMissingRecord } from "../errors.js"
@@ -8,7 +10,11 @@ import {
 } from "../mappers/universityMapper.js"
 import { parsePositiveId } from "../universityQuery.js"
 import {
+  programCreateSchema,
+  programUpdateSchema,
   internalNoteSchema,
+  managedContentKinds,
+  managedContentSchema,
   moderationStatusSchema,
   moderatorProfileSchema,
   moderatorAnnouncementSchema,
@@ -46,25 +52,6 @@ function mapModeratorProfile(profile) {
   }
 }
 
-const rolePermissions = {
-  admin: ["all"],
-  moderator: ["community", "reviews", "reports", "notifications", "analytics"],
-  university_editor: ["universities", "student-councils", "verification"],
-  content_editor: ["content", "notifications"],
-  community_moderator: ["community", "reports"],
-}
-
-function canAccess(admin, permission) {
-  const permissions = rolePermissions[admin.role || "admin"] || []
-  return permissions.includes("all") || permissions.includes(permission)
-}
-
-function requirePermission(req, permission) {
-  if (!canAccess(req.admin, permission)) {
-    throw new ApiError(403, "Moderator role does not allow this action")
-  }
-}
-
 async function logActivity(prisma, req, data) {
   await prisma.moderatorActivityLog.create({
     data: {
@@ -83,11 +70,14 @@ export function createModeratorRouter(prisma) {
   const router = Router()
 
   router.use(requireAdmin(prisma))
+  router.use("/universities", permit("universities"))
+  router.use("/student-councils", permit("student-councils"))
+  router.use("/student-council-roles", permit("student-councils"))
 
   router.get(
     "/queue",
     asyncHandler(async (req, res) => {
-      requirePermission(req, "community")
+      if (!["community", "reviews", "student-councils", "verification"].some((permission) => canAccess(req.admin, permission))) throw new ApiError(403, "Moderator role does not allow this action")
       const [pendingPosts, reportedPosts, reportedComments, reports, studentCouncilChanges, brokenImages] = await Promise.all([
         prisma.communityPost.findMany({
           where: { status: "pending" },
@@ -131,14 +121,14 @@ export function createModeratorRouter(prisma) {
 
       res.json({
         data: {
-          pendingPosts,
-          reportedPosts,
-          reportedComments,
-          pendingUniversityReviews: [],
-          pendingStudentCouncilChanges: studentCouncilChanges,
+          pendingPosts: canAccess(req.admin, "community") ? pendingPosts : [],
+          reportedPosts: canAccess(req.admin, "community") ? reportedPosts : [],
+          reportedComments: canAccess(req.admin, "community") ? reportedComments : [],
+          pendingUniversityReviews: canAccess(req.admin, "reviews") ? await prisma.universityReview.findMany({ where: { status: "pending" }, include: { user: { select: { id: true, name: true } }, university: { select: { id: true, name: true } } }, take: 50, orderBy: { createdAt: "asc" } }) : [],
+          pendingStudentCouncilChanges: canAccess(req.admin, "student-councils") ? studentCouncilChanges : [],
           pendingUniversityDataChanges: [],
-          verificationQueue: brokenImages,
-          reports,
+          verificationQueue: canAccess(req.admin, "verification") ? brokenImages : [],
+          reports: canAccess(req.admin, "reports") ? reports : [],
         },
       })
     }),
@@ -150,7 +140,7 @@ export function createModeratorRouter(prisma) {
       requirePermission(req, "reports")
       const reports = await prisma.communityReport.findMany({
         include: {
-          reporter: { select: { id: true, name: true, email: true } },
+          reporter: { select: { id: true, name: true } },
           post: { select: { id: true, title: true, status: true } },
           comment: { select: { id: true, content: true, status: true } },
         },
@@ -171,6 +161,7 @@ export function createModeratorRouter(prisma) {
       const existing = await prisma.communityPost.findUnique({ where: { id } })
       if (!existing) throw new ApiError(404, "Community post not found")
 
+      if (req.body.status && !["published", "pending", "hidden", "reported", "removed"].includes(req.body.status)) throw new ApiError(400, "Invalid post status")
       const post = await prisma.communityPost.update({
         where: { id },
         data: {
@@ -201,14 +192,16 @@ export function createModeratorRouter(prisma) {
       const existing = await prisma.communityComment.findUnique({ where: { id } })
       if (!existing) throw new ApiError(404, "Community comment not found")
 
+      if (req.body.status && !["published", "pending", "hidden", "reported", "removed"].includes(req.body.status)) throw new ApiError(400, "Invalid comment status")
       const comment = await prisma.communityComment.update({
         where: { id },
         data: {
           status: req.body.status || existing.status,
-          official: req.body.official ?? existing.official,
+          official: ["hidden", "removed", "pending"].includes(req.body.status) ? false : req.body.official ?? existing.official,
         },
       })
 
+      if (!comment.official) await prisma.communityPost.updateMany({ where: { officialCommentId: comment.id }, data: { officialCommentId: null, officialAnswer: null } })
       if (comment.official) {
         await prisma.communityPost.update({
           where: { id: comment.postId },
@@ -234,15 +227,21 @@ export function createModeratorRouter(prisma) {
     validateBody(moderationStatusSchema),
     asyncHandler(async (req, res) => {
       requirePermission(req, "reviews")
-      await logActivity(prisma, req, {
-        actionType: "moderate_review",
-        targetEntity: "Review",
-        targetEntityId: parsePositiveId(req.params.id),
-        newStatus: req.body.status,
-        metadata: { note: req.body.note },
+      if (!["approved", "pending", "rejected", "hidden", "removed"].includes(req.body.status)) throw new ApiError(400, "Invalid review moderation status")
+      const id = parsePositiveId(req.params.id)
+      const review = await prisma.$transaction(async (tx) => {
+        const updated = await tx.universityReview.update({ where: { id }, data: { status: req.body.status } })
+        await logActivity(tx, req, {
+          actionType: "moderate_review",
+          targetEntity: "UniversityReview",
+          targetEntityId: id,
+          newStatus: req.body.status,
+          metadata: { note: req.body.note },
+        })
+        return updated
       })
 
-      res.json({ data: { id: parsePositiveId(req.params.id), status: req.body.status } })
+      res.json({ data: review })
     }),
   )
 
@@ -293,6 +292,11 @@ export function createModeratorRouter(prisma) {
     validateBody(moderatorRoleSchema),
     asyncHandler(async (req, res) => {
       requirePermission(req, "all")
+      const targetId = parsePositiveId(req.params.id)
+      if (req.body.role !== "admin") {
+        const target = await prisma.adminUser.findUnique({ where: { id: targetId } })
+        if (target?.role === "admin" && await prisma.adminUser.count({ where: { role: "admin" } }) <= 1) throw new ApiError(409, "The last administrator cannot be demoted")
+      }
       const admin = await prisma.adminUser.update({
         where: { id: parsePositiveId(req.params.id) },
         data: { role: req.body.role },
@@ -422,7 +426,6 @@ export function createModeratorRouter(prisma) {
         select: {
           id: true,
           name: true,
-          email: true,
           createdAt: true,
           _count: {
             select: {
@@ -447,11 +450,12 @@ export function createModeratorRouter(prisma) {
     asyncHandler(async (req, res) => {
       requirePermission(req, "analytics")
       const events = await prisma.analyticsEvent.findMany({ orderBy: { createdAt: "desc" }, take: 1000 })
+      const safeCell = (value) => { const text = String(value); return /^[=+\-@\t\r]/.test(text) ? "'" + text : text }
       const csv = [
         "id,eventType,entityType,entityId,userId,sessionId,createdAt",
         ...events.map((event) =>
           [event.id, event.eventType, event.entityType || "", event.entityId || "", event.userId || "", event.sessionId || "", event.createdAt.toISOString()]
-            .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+            .map((value) => `"${safeCell(value).replace(/"/g, '""')}"`)
             .join(","),
         ),
       ].join("\n")
@@ -560,6 +564,8 @@ export function createModeratorRouter(prisma) {
         ...req.body,
         adminUserId: req.body.adminUserId === null ? null : req.body.adminUserId,
       }
+      if (data.adminUserId != null && req.admin.role !== "admin" && data.adminUserId !== req.admin.id) throw new ApiError(403, "Only administrators can assign another moderator")
+      await validateCouncilRole(prisma, data)
       const role = await prisma.studentCouncilRole.create({ data })
 
       res.status(201).json({ data: mapStudentCouncilRoleForClient(role) })
@@ -570,6 +576,10 @@ export function createModeratorRouter(prisma) {
     "/student-council-roles/:id",
     validateBody(studentCouncilRoleUpdateSchema),
     asyncHandler(async (req, res) => {
+      const existing = await prisma.studentCouncilRole.findUnique({ where: { id: parsePositiveId(req.params.id) } })
+      if (!existing) throw new ApiError(404, "Student council role not found")
+      if (req.body.adminUserId != null && req.admin.role !== "admin" && req.body.adminUserId !== req.admin.id) throw new ApiError(403, "Only administrators can assign another moderator")
+      await validateCouncilRole(prisma, { ...existing, ...req.body })
       const role = await prisma.studentCouncilRole.update({
         where: { id: parsePositiveId(req.params.id) },
         data: req.body,
@@ -640,5 +650,63 @@ export function createModeratorRouter(prisma) {
     }),
   )
 
+  router.patch("/reports/:id/status", permit("reports"), asyncHandler(async (req, res) => {
+    if (!["resolved", "dismissed", "pending"].includes(req.body?.status)) throw new ApiError(400, "Invalid report status")
+    const report = await prisma.communityReport.update({ where: { id: parsePositiveId(req.params.id) }, data: { status: req.body.status } })
+    await logActivity(prisma, req, { actionType: "resolve_report", targetEntity: "CommunityReport", targetEntityId: report.id, newStatus: report.status })
+    res.json({ data: report })
+  }))
+  router.get("/support-messages", permit("support"), asyncHandler(async (req, res) => {
+    const { take, skip, page, limit } = parsePagination(req.query)
+    const [messages, total] = await Promise.all([prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take, skip }), prisma.contactMessage.count()])
+    res.json({ data: messages, meta: { total, page, limit } })
+  }))
+  router.patch("/support-messages/:id", permit("support"), asyncHandler(async (req, res) => {
+    if (!["new", "in progress", "resolved", "closed"].includes(req.body?.status)) throw new ApiError(400, "Invalid support status")
+    const message = await prisma.contactMessage.update({ where: { id: parsePositiveId(req.params.id) }, data: { status: req.body.status } })
+    await logActivity(prisma, req, { actionType: "update_support_message", targetEntity: "ContactMessage", targetEntityId: message.id, newStatus: message.status })
+    res.json({ data: message })
+  }))
+  router.put("/content/:kind", permit("content"), validateBody(managedContentSchema), asyncHandler(async (req, res) => {
+    const kind = req.params.kind
+    if (!managedContentKinds.includes(kind)) throw new ApiError(404, "Managed content type not found")
+    const content = await prisma.managedContent.upsert({
+      where: { kind },
+      update: { payload: req.body.payload, updatedById: req.admin.id },
+      create: { kind, payload: req.body.payload, updatedById: req.admin.id },
+    })
+    await logActivity(prisma, req, {
+      actionType: "update_managed_content",
+      targetEntity: "ManagedContent",
+      metadata: { kind, itemCount: req.body.payload.length },
+    })
+    res.json({ data: content.payload, meta: { kind, updatedAt: content.updatedAt } })
+  }))
+  router.post('/programs', permit('universities'), validateBody(programCreateSchema), asyncHandler(async (req, res) => {
+    const program = await prisma.$transaction(async tx => {
+      if (!await tx.university.findUnique({ where: { id: req.body.universityId }, select: { id: true } })) throw new ApiError(404, 'University not found')
+      const created = await tx.program.create({ data: req.body })
+      await logActivity(tx, req, { actionType: 'create_program', targetEntity: 'Program', targetEntityId: created.id, metadata: { newState: req.body } })
+      return created
+    })
+    res.status(201).json({ data: program })
+  }))
+  router.patch('/programs/:id', permit('universities'), validateBody(programUpdateSchema), asyncHandler(async (req, res) => {
+    const id = parsePositiveId(req.params.id)
+    const program = await prisma.$transaction(async tx => {
+      const previous = await tx.program.findUnique({ where: { id } })
+      if (!previous) throw new ApiError(404, 'Program not found')
+      const updated = await tx.program.update({ where: { id }, data: req.body })
+      await logActivity(tx, req, { actionType: 'update_program', targetEntity: 'Program', targetEntityId: id, metadata: { oldState: JSON.parse(JSON.stringify(previous)), newState: req.body } })
+      return updated
+    })
+    res.json({ data: program })
+  }))
   return router
+}
+
+async function validateCouncilRole(prisma, data) {
+  const council = await prisma.studentCouncil.findUnique({ where: { id: data.councilId } })
+  if (!council || council.universityId !== data.universityId) throw new ApiError(400, "Council must belong to the selected university")
+  if (data.adminUserId != null && !await prisma.adminUser.findUnique({ where: { id: data.adminUserId }, select: { id: true } })) throw new ApiError(404, "Moderator account not found")
 }

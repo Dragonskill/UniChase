@@ -1,6 +1,7 @@
+import { parsePagination } from "../pagination.js"
 import { Router } from "express"
 import { requireStudent } from "../auth.js"
-import { asyncHandler } from "../errors.js"
+import { ApiError, asyncHandler } from "../errors.js"
 import { parsePositiveId } from "../universityQuery.js"
 
 export function createNotificationRouter(prisma) {
@@ -13,6 +14,7 @@ export function createNotificationRouter(prisma) {
     asyncHandler(async (req, res) => {
       const type = typeof req.query.type === "string" ? req.query.type : undefined
       const unreadOnly = req.query.unread === "true"
+      const { take, skip } = parsePagination(req.query)
       const notifications = await prisma.notification.findMany({
         where: {
           userId: req.user.id,
@@ -20,7 +22,7 @@ export function createNotificationRouter(prisma) {
           ...(unreadOnly ? { isRead: false } : {}),
         },
         orderBy: { createdAt: "desc" },
-        take: Math.min(Number(req.query.limit) || 50, 100),
+        take, skip,
       })
 
       res.json({ data: notifications })
@@ -45,6 +47,7 @@ export function createNotificationRouter(prisma) {
       })
       const notification = await prisma.notification.findFirst({ where: { id, userId: req.user.id } })
 
+      if (!notification) throw new ApiError(404, "Notification not found")
       res.json({ data: notification })
     }),
   )

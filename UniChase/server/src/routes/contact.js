@@ -1,9 +1,11 @@
+import { createContactLimiter } from "../rateLimits.js"
 import { Router } from "express"
 import { asyncHandler } from "../errors.js"
 import { contactSchema, validateBody } from "../validation.js"
 
 export function createContactRouter(prisma) {
   const router = Router()
+  router.use(createContactLimiter())
 
   router.post(
     "/",

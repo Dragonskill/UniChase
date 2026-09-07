@@ -42,7 +42,7 @@ export default function SignUp() {
       })
       setToken(response.token)
       setStoredUser(response.user)
-      navigate('/dashboard', { replace: true })
+      navigate('/onboarding', { replace: true })
     } catch (error) {
       setFormError(getAuthErrorMessage(error))
     }

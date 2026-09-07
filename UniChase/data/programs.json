@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-09-05",
+  "programs": [
+    {
+      "universitySlug": "seoul-national-university",
+      "slug": "computer-science-seoul-national-university",
+      "name": "Computer Science and Engineering",
+      "degreeLevel": "Undergraduate",
+      "officialLink": "https://cse.snu.ac.kr/en/academics/undergraduate/degree-requirements"
+    },
+    {
+      "universitySlug": "korea-university",
+      "slug": "computer-science-korea-university",
+      "name": "Computer Science and Engineering",
+      "degreeLevel": "Undergraduate",
+      "officialLink": "https://cs.korea.edu/en_cs/under/computer_Curriculum.do"
+    },
+    {
+      "universitySlug": "yonsei-university",
+      "slug": "computer-science-yonsei-university",
+      "name": "Computer Science and Engineering",
+      "degreeLevel": "Undergraduate",
+      "officialLink": "https://cais.yonsei.ac.kr/csai_en/educate/facultyCurri.do"
+    }
+  ]
+}

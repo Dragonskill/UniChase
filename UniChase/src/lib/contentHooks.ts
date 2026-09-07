@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   contentChangeEvent,
+  refreshManagedContent,
   getManagedForumPosts,
   getManagedMembers,
   getManagedNews,
@@ -11,6 +12,7 @@ function useContentItems<T>(readItems: () => T[]) {
   const [items, setItems] = useState<T[]>(() => readItems())
 
   useEffect(() => {
+    void refreshManagedContent().catch(() => undefined)
     function sync() {
       setItems(readItems())
     }

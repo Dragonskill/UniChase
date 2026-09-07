@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useParams, useNavigate } from "react-router-dom"
 import GlowLetters from "@/components/ui/GlowLetters"
 import {
+  updateCommunityComment,
+  deleteCommunityComment,
   createCommunityComment,
   deleteCommunityPost,
   fetchCommunityPost,
@@ -16,10 +18,14 @@ import { applySeo } from "@/lib/seo"
 import { getStoredUser, getToken } from "@/lib/storage"
 
 export default function PostDetail() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const token = getToken()
   const user = getStoredUser<{ id: number; name: string }>()
   const [post, setPost] = useState<(CommunityPost & { comments: CommunityComment[] }) | null>(null)
+  const [replyTo, setReplyTo] = useState<number | null>(null)
+  const [editingComment, setEditingComment] = useState<number | null>(null)
+  const [commentText, setCommentText] = useState("")
   const [reply, setReply] = useState("")
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({ title: "", content: "" })
@@ -30,7 +36,7 @@ export default function PostDetail() {
     fetchCommunityPost(id, token).then((data) => {
       setPost(data)
       setEditForm({ title: data.title, content: data.content })
-    }).catch(() => setStatus("Post not found."))
+    }).catch(() => { setPost(null); setStatus("Could not load this post. It may have been removed, or the connection failed.") })
   }, [id, token])
 
   useEffect(() => {
@@ -53,9 +59,9 @@ export default function PostDetail() {
       setStatus("Login is required to reply.")
       return
     }
-    createCommunityComment(token, post.id, { content: reply })
+    createCommunityComment(token, post.id, { content: reply, parentCommentId: replyTo })
       .then(() => {
-        setReply("")
+        setReply(""); setReplyTo(null)
         refresh()
       })
       .catch(() => setStatus("Could not save reply."))
@@ -96,8 +102,8 @@ export default function PostDetail() {
 
       {editing ? (
         <div className="grid gap-3 rounded-2xl bg-surface p-5 shadow-sm">
-          <input value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal" />
-          <textarea value={editForm.content} onChange={(event) => setEditForm({ ...editForm, content: event.target.value })} rows={8} className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal" />
+          <input aria-label="Post title" value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal" />
+          <textarea aria-label="Post content" value={editForm.content} onChange={(event) => setEditForm({ ...editForm, content: event.target.value })} rows={8} className="bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal" />
           <div className="flex gap-2">
             <button onClick={saveEdit} className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white">Save</button>
             <button onClick={() => setEditing(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-muted">Cancel</button>
@@ -117,7 +123,7 @@ export default function PostDetail() {
             {ownsPost && (
               <div className="flex gap-2">
                 <button onClick={() => setEditing(true)} className="text-xs text-teal hover:underline">Edit</button>
-                <button onClick={() => token && deleteCommunityPost(token, post.id).then(() => setStatus("Post removed."))} className="text-xs text-muted hover:text-teal">Delete</button>
+                <button onClick={() => token && deleteCommunityPost(token, post.id).then(() => navigate("/community")).catch(() => setStatus("Could not delete post."))} className="text-xs text-muted hover:text-teal">Delete</button>
               </div>
             )}
           </div>
@@ -136,15 +142,16 @@ export default function PostDetail() {
       )}
 
       <div className="mb-8 flex flex-wrap gap-2">
-        <button onClick={() => token && toggleCommunityPostLike(token, post.id).then(refresh)} className={`rounded-full px-3 py-1 text-sm ${post.liked ? "bg-teal text-white" : "bg-cream text-muted hover:text-teal"}`}>{post.likes} upvotes</button>
-        <button onClick={() => token && toggleCommunityPostSave(token, post.id).then(refresh)} className={`rounded-full px-3 py-1 text-sm ${post.saved ? "bg-navy text-white" : "bg-cream text-muted hover:text-teal"}`}>{post.saved ? "Saved" : "Save"}</button>
-        <button onClick={() => token ? reportCommunityPost(token, post.id, { reason: "other", details: "Reported from post detail page" }).then(() => setStatus("Report sent to moderators.")) : setStatus("Login is required to report.")} className="rounded-full bg-cream px-3 py-1 text-sm text-muted hover:text-teal">Report</button>
+        <button onClick={() => token ? toggleCommunityPostLike(token, post.id).then(refresh).catch(() => setStatus("Could not update vote.")) : setStatus("Login is required to vote.")} className={`rounded-full px-3 py-1 text-sm ${post.liked ? "bg-teal text-white" : "bg-cream text-muted hover:text-teal"}`}>{post.likes} upvotes</button>
+        <button onClick={() => token ? toggleCommunityPostSave(token, post.id).then(refresh).catch(() => setStatus("Could not save post.")) : setStatus("Login is required to save posts.")} className={`rounded-full px-3 py-1 text-sm ${post.saved ? "bg-navy text-white" : "bg-cream text-muted hover:text-teal"}`}>{post.saved ? "Saved" : "Save"}</button>
+        <button onClick={() => token ? reportCommunityPost(token, post.id, { reason: "other", details: "Reported from post detail page" }).then(() => setStatus("Report sent to moderators.")).catch(() => setStatus("Could not send report.")) : setStatus("Login is required to report.")} className="rounded-full bg-cream px-3 py-1 text-sm text-muted hover:text-teal">Report</button>
       </div>
 
       <section className="border-t border-gray-100 pt-8">
         <h2 className="text-lg font-bold text-navy mb-6">{post.comments.length} Replies</h2>
-        <form onSubmit={submitReply} className="bg-surface border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
-          <textarea value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply..." className="w-full bg-transparent text-sm resize-none focus:outline-none" rows={3} />
+        {replyTo && <p className="mb-3 text-sm text-ink">Replying to {post.comments.find(comment => comment.id === replyTo)?.author?.name || "Student"} <button className="text-teal ml-3" onClick={() => setReplyTo(null)}>Cancel</button></p>}
+        <form id="reply-form" onSubmit={submitReply} className="bg-surface border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
+          <textarea aria-label="Reply" maxLength={5000} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply..." className="w-full bg-transparent text-sm resize-none focus:outline-none" rows={3} />
           <div className="flex justify-end">
             <button className="bg-teal hover:bg-teal-light text-white text-sm px-5 py-2 rounded-lg transition-colors font-medium">Reply</button>
           </div>
@@ -152,12 +159,21 @@ export default function PostDetail() {
         <div className="space-y-3">
           {post.comments.length === 0 && <p className="text-sm text-muted text-center py-8">Be the first to reply.</p>}
           {post.comments.map((comment) => (
-            <article key={comment.id} className="rounded-xl bg-surface p-4 shadow-sm">
+            <article key={comment.id} className={`rounded-xl bg-surface p-4 shadow-sm ${comment.parentCommentId ? "ml-4 border-l-2 border-teal/30" : ""}`}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-navy">{comment.author?.name || "Student"}</p>
                 {comment.official && <span className="rounded-full bg-teal/10 px-2 py-0.5 text-xs text-teal">Official</span>}
               </div>
-              <p className="mt-2 text-sm text-gray-700">{comment.content}</p>
+              {comment.parentCommentId && <p className="text-xs text-muted">Reply to {post.comments.find(entry => entry.id === comment.parentCommentId)?.author?.name || 'Student'}</p>}
+              {editingComment === comment.id ? <form className="mt-3" onSubmit={event => { event.preventDefault(); if (token) void updateCommunityComment(token, comment.id, commentText).then(() => { setEditingComment(null); refresh() }).catch(() => setStatus('Could not edit comment.')) }}>
+                <textarea aria-label="Edit comment" required value={commentText} onChange={event => setCommentText(event.target.value)} className="w-full border rounded-lg bg-cream p-2" />
+                <button className="text-sm text-teal mr-3">Save comment</button><button type="button" onClick={() => setEditingComment(null)} className="text-sm text-muted">Cancel</button>
+              </form> : <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>}
+              <div className="flex flex-wrap gap-3 mt-3 text-xs">
+                <button className="text-teal" onClick={() => { if (!token) { setStatus('Login is required to reply.'); return } setReplyTo(comment.id); document.querySelector<HTMLTextAreaElement>('#reply-form textarea')?.focus() }}>Reply</button>
+                {token && user?.id === comment.authorId && <><button className="text-teal" onClick={() => { setEditingComment(comment.id); setCommentText(comment.content) }}>Edit</button><button className="text-muted" onClick={() => void deleteCommunityComment(token, comment.id).then(refresh).catch(() => setStatus('Could not delete comment.'))}>Delete</button></>}
+                <button className="text-muted" onClick={() => token ? reportCommunityPost(token, post.id, { reason: 'other', commentId: comment.id }).then(() => setStatus('Comment reported to moderators.')).catch(() => setStatus('Could not report comment.')) : setStatus('Login is required to report.')}>Report</button>
+              </div>
               <p className="mt-2 text-xs text-muted">{new Date(comment.createdAt).toLocaleString()}</p>
             </article>
           ))}

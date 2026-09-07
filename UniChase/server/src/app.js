@@ -8,11 +8,15 @@ import { createAnalyticsRouter } from "./routes/analytics.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
 import { createAuthRouter } from "./routes/auth.js"
 import { createCommunityRouter } from "./routes/community.js"
+import { createContentRouter } from "./routes/content.js"
 import { createContactRouter } from "./routes/contact.js"
 import { createModeratorRouter } from "./routes/moderator.js"
 import { createNotificationRouter } from "./routes/notifications.js"
 import { createStudentCouncilRouter } from "./routes/studentCouncils.js"
+import { createProgramRouter } from "./routes/programs.js"
+import { createReviewsRouter } from "./routes/reviews.js"
 import { createStudentAuthRouter } from "./routes/studentAuth.js"
+import { createStudentToolsRouter } from "./routes/studentTools.js"
 import { createUserRouter } from "./routes/user.js"
 import { createUniversityRouter } from "./routes/universities.js"
 
@@ -46,8 +50,12 @@ export function createApp({ prisma }) {
   app.use("/api/community", createCommunityRouter(prisma))
   app.use("/api/notifications", createNotificationRouter(prisma))
   app.use("/api/analytics", createAnalyticsRouter(prisma))
+  app.use("/api/programs", createProgramRouter(prisma))
+  app.use("/api/reviews", createReviewsRouter(prisma))
   app.use("/api/auth", createStudentAuthRouter(prisma))
   app.use("/api/user", createUserRouter(prisma))
+  app.use("/api/student-tools", createStudentToolsRouter(prisma))
+  app.use("/api/content", createContentRouter(prisma))
   app.use("/api/contact", createContactRouter(prisma))
   app.use("/api/admin", createAuthRouter(prisma))
   app.use("/api/admin/universities", createAdminUniversityRouter(prisma))

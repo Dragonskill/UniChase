@@ -1,3 +1,4 @@
+import { parsePagination } from "../pagination.js"
 import { Router } from "express"
 import { requireStudent } from "../auth.js"
 import { ApiError, asyncHandler, isPrismaMissingRecord } from "../errors.js"
@@ -12,7 +13,7 @@ import {
   validateBody,
 } from "../validation.js"
 
-const visibleContent = { notIn: ["hidden", "removed"] }
+const visibleContent = { in: ["published", "reported"] }
 
 function mapAuthor(author) {
   return author ? { id: author.id, name: author.name } : null
@@ -86,8 +87,7 @@ export function createCommunityRouter(prisma) {
     "/posts",
     asyncHandler(async (req, res) => {
       const viewer = await optionalStudent(prisma, req)
-      const take = Math.min(Number(req.query.limit) || 20, 50)
-      const page = Math.max(Number(req.query.page) || 1, 1)
+      const { take, page, skip } = parsePagination(req.query, 20, 50)
       const search = typeof req.query.search === "string" ? req.query.search.trim() : ""
       const category = typeof req.query.category === "string" ? req.query.category.trim() : ""
       const universityId = req.query.universityId ? Number(req.query.universityId) : null
@@ -115,10 +115,10 @@ export function createCommunityRouter(prisma) {
             university: { select: { id: true, name: true, slug: true, city: true } },
             likes: viewer ? { where: { userId: viewer.id } } : false,
             savedBy: viewer ? { where: { userId: viewer.id } } : false,
-            _count: { select: { comments: true, likes: true, savedBy: true } },
+            _count: { select: { comments: { where: { status: visibleContent } }, likes: true } },
           },
           orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
-          skip: (page - 1) * take,
+          skip,
           take,
         }),
         prisma.communityPost.count({ where }),
@@ -137,14 +137,14 @@ export function createCommunityRouter(prisma) {
         include: {
           author: { select: { id: true, name: true } },
           university: { select: { id: true, name: true, slug: true, city: true } },
-          likes: viewer ? { where: { userId: viewer.id } } : true,
-          savedBy: viewer ? { where: { userId: viewer.id } } : true,
+          likes: viewer ? { where: { userId: viewer.id } } : false,
+          savedBy: viewer ? { where: { userId: viewer.id } } : false,
           comments: {
             where: { status: visibleContent },
             include: { author: { select: { id: true, name: true } } },
             orderBy: { createdAt: "asc" },
           },
-          _count: { select: { comments: true, likes: true, savedBy: true } },
+          _count: { select: { comments: { where: { status: visibleContent } }, likes: true } },
         },
       })
 
@@ -168,7 +168,7 @@ export function createCommunityRouter(prisma) {
         include: {
           author: { select: { id: true, name: true } },
           university: { select: { id: true, name: true, slug: true, city: true } },
-          _count: { select: { comments: true, likes: true, savedBy: true } },
+          _count: { select: { comments: { where: { status: visibleContent } }, likes: true } },
         },
       })
 
@@ -197,13 +197,14 @@ export function createCommunityRouter(prisma) {
       if (!existing) throw new ApiError(404, "Community post not found")
       if (existing.authorId !== req.user.id) throw new ApiError(403, "You can only edit your own posts")
 
+      if (["hidden", "removed"].includes(existing.status)) throw new ApiError(403, "Moderated posts cannot be edited")
       const post = await prisma.communityPost.update({
-        where: { id },
-        data: req.body,
+        where: { id, authorId: req.user.id },
+        data: { ...req.body },
         include: {
           author: { select: { id: true, name: true } },
           university: { select: { id: true, name: true, slug: true, city: true } },
-          _count: { select: { comments: true, likes: true, savedBy: true } },
+          _count: { select: { comments: { where: { status: visibleContent } }, likes: true } },
         },
       })
 
@@ -236,11 +237,16 @@ export function createCommunityRouter(prisma) {
 
       if (!post) throw new ApiError(404, "Community post not found")
 
+      if (req.body.parentCommentId) {
+        const parent = await prisma.communityComment.findFirst({ where: { id: req.body.parentCommentId, postId, status: visibleContent } })
+        if (!parent) throw new ApiError(404, "Parent comment not found in this post")
+      }
       const comment = await prisma.communityComment.create({
         data: {
           postId,
           authorId: req.user.id,
           content: req.body.content,
+          status: "published",
           parentCommentId: req.body.parentCommentId,
         },
         include: { author: { select: { id: true, name: true } } },
@@ -285,8 +291,10 @@ export function createCommunityRouter(prisma) {
       if (!existing) throw new ApiError(404, "Community comment not found")
       if (existing.authorId !== req.user.id) throw new ApiError(403, "You can only edit your own comments")
 
+      if (["hidden", "removed"].includes(existing.status)) throw new ApiError(403, "Moderated comments cannot be edited")
+      if (existing.official) throw new ApiError(403, "Ask a moderator to update an official answer")
       const comment = await prisma.communityComment.update({
-        where: { id },
+        where: { id, authorId: req.user.id },
         data: req.body,
         include: { author: { select: { id: true, name: true } } },
       })
@@ -305,7 +313,10 @@ export function createCommunityRouter(prisma) {
       if (!existing) throw new ApiError(404, "Community comment not found")
       if (existing.authorId !== req.user.id) throw new ApiError(403, "You can only delete your own comments")
 
-      await prisma.communityComment.update({ where: { id }, data: { status: "removed" } })
+      await prisma.$transaction(async (tx) => {
+        await tx.communityComment.update({ where: { id, authorId: req.user.id }, data: { status: "removed", official: false } })
+        await tx.communityPost.updateMany({ where: { officialCommentId: id }, data: { officialCommentId: null, officialAnswer: null } })
+      })
       res.json({ data: { ok: true } })
     }),
   )
@@ -315,7 +326,7 @@ export function createCommunityRouter(prisma) {
     requireStudent(prisma),
     asyncHandler(async (req, res) => {
       const postId = parsePositiveId(req.params.id)
-      const post = await prisma.communityPost.findUnique({ where: { id: postId } })
+      const post = await prisma.communityPost.findFirst({ where: { id: postId, status: visibleContent } })
       if (!post) throw new ApiError(404, "Community post not found")
 
       const existing = await prisma.communityLike.findUnique({ where: { userId_postId: { userId: req.user.id, postId } } })
@@ -348,6 +359,8 @@ export function createCommunityRouter(prisma) {
     requireStudent(prisma),
     asyncHandler(async (req, res) => {
       const postId = parsePositiveId(req.params.id)
+      const post = await prisma.communityPost.findFirst({ where: { id: postId, status: visibleContent }, select: { id: true } })
+      if (!post) throw new ApiError(404, "Community post not found")
       const existing = await prisma.communitySavedPost.findUnique({ where: { userId_postId: { userId: req.user.id, postId } } })
       if (existing) {
         await prisma.communitySavedPost.delete({ where: { userId_postId: { userId: req.user.id, postId } } })
@@ -365,6 +378,12 @@ export function createCommunityRouter(prisma) {
     validateBody(communityReportSchema),
     asyncHandler(async (req, res) => {
       const postId = parsePositiveId(req.params.id)
+      const post = await prisma.communityPost.findFirst({ where: { id: postId, status: visibleContent }, select: { id: true } })
+      if (!post) throw new ApiError(404, "Community post not found")
+      if (req.body.commentId) {
+        const comment = await prisma.communityComment.findFirst({ where: { id: req.body.commentId, postId, status: visibleContent }, select: { id: true } })
+        if (!comment) throw new ApiError(404, "Comment not found in this post")
+      }
       const report = await prisma.communityReport.create({
         data: {
           postId,
@@ -375,7 +394,8 @@ export function createCommunityRouter(prisma) {
         },
       })
 
-      await prisma.communityPost.update({ where: { id: postId }, data: { status: "reported" } }).catch((error) => {
+      if (req.body.commentId) await prisma.communityComment.updateMany({ where: { id: req.body.commentId, postId, status: "published" }, data: { status: "reported" } })
+      await prisma.communityPost.updateMany({ where: { id: postId, status: "published" }, data: { status: "reported" } }).catch((error) => {
         if (!isPrismaMissingRecord(error)) throw error
       })
 

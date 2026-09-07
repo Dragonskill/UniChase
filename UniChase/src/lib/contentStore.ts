@@ -1,3 +1,5 @@
+import { fetchManagedContent, saveManagedContent, type ManagedContentKind } from './api'
+import { getModeratorSession } from './moderatorAuth'
 import { forumPosts, qaPosts, type ForumPost, type QAPost } from '@/data/community'
 import { news, type NewsArticle } from '@/data/news'
 
@@ -54,17 +56,21 @@ function notifyContentChange() {
   }
 }
 
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : fallback
-  } catch {
-    return fallback
-  }
+const cache = new Map<string, unknown>()
+let pending: Promise<void> | null = null
+export function refreshManagedContent() {
+  if (!pending) pending = Promise.all((['news', 'forum', 'qa', 'members'] as const).map(async kind => {
+    const data = await fetchManagedContent(kind)
+    if (data !== null) cache.set(`unichase.content.${kind}`, data)
+  })).then(() => notifyContentChange()).finally(() => { pending = null })
+  return pending
 }
-
-function writeJson(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value))
+function readJson<T>(key: string, fallback: T): T { return (cache.get(key) as T) ?? fallback }
+async function writeJson(key: string, value: unknown[]) {
+  const session = getModeratorSession()
+  if (!session) throw new Error('Please sign in to publish content.')
+  await saveManagedContent(session.token, key.split('.').pop() as ManagedContentKind, value)
+  cache.set(key, value)
   notifyContentChange()
 }
 
@@ -80,50 +86,46 @@ export function getManagedNews() {
   return byNewestId(readJson<NewsArticle[]>(newsKey, news))
 }
 
-export function setManagedNews(items: NewsArticle[]) {
-  writeJson(newsKey, byNewestId(items))
+export async function setManagedNews(items: NewsArticle[]) {
+  await writeJson(newsKey, byNewestId(items))
 }
 
-export function resetManagedNews() {
-  localStorage.removeItem(newsKey)
-  notifyContentChange()
+export async function resetManagedNews() {
+  await writeJson(newsKey, news)
 }
 
 export function getManagedForumPosts() {
   return byNewestId(readJson<ForumPost[]>(forumKey, forumPosts))
 }
 
-export function setManagedForumPosts(items: ForumPost[]) {
-  writeJson(forumKey, byNewestId(items))
+export async function setManagedForumPosts(items: ForumPost[]) {
+  await writeJson(forumKey, byNewestId(items))
 }
 
-export function resetManagedForumPosts() {
-  localStorage.removeItem(forumKey)
-  notifyContentChange()
+export async function resetManagedForumPosts() {
+  await writeJson(forumKey, forumPosts)
 }
 
 export function getManagedQaPosts() {
   return byNewestId(readJson<QAPost[]>(qaKey, qaPosts))
 }
 
-export function setManagedQaPosts(items: QAPost[]) {
-  writeJson(qaKey, byNewestId(items))
+export async function setManagedQaPosts(items: QAPost[]) {
+  await writeJson(qaKey, byNewestId(items))
 }
 
-export function resetManagedQaPosts() {
-  localStorage.removeItem(qaKey)
-  notifyContentChange()
+export async function resetManagedQaPosts() {
+  await writeJson(qaKey, qaPosts)
 }
 
 export function getManagedMembers() {
   return byNewestId(readJson<SocietyMember[]>(membersKey, defaultMembers))
 }
 
-export function setManagedMembers(items: SocietyMember[]) {
-  writeJson(membersKey, byNewestId(items))
+export async function setManagedMembers(items: SocietyMember[]) {
+  await writeJson(membersKey, byNewestId(items))
 }
 
-export function resetManagedMembers() {
-  localStorage.removeItem(membersKey)
-  notifyContentChange()
+export async function resetManagedMembers() {
+  await writeJson(membersKey, defaultMembers)
 }

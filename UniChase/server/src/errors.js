@@ -23,15 +23,18 @@ export function errorHandler(error, req, res, next) {
     return
   }
 
-  const statusCode = error.statusCode || 500
+  const prismaErrors = { P2002: [409, "A record with these details already exists"], P2003: [400, "A referenced record does not exist or is still in use"], P2025: [404, "Record not found"] }
+  const known = prismaErrors[error.code]
+  const requestedStatus = known?.[0] || error.statusCode || error.status
+  const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
   const response = {
     error: {
       message:
-        statusCode === 500 ? "Internal server error" : error.message || "Request failed",
+        statusCode >= 500 ? "Internal server error" : known?.[1] || (error.type === "entity.parse.failed" ? "Invalid JSON request body" : error.message) || "Request failed",
     },
   }
 
-  if (error.details) {
+  if (error.details && statusCode < 500) {
     response.error.details = error.details
   }
 

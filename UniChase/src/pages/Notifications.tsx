@@ -94,11 +94,11 @@ export default function Notifications() {
               </div>
               <div className="flex gap-2">
                 {!item.isRead && (
-                  <button type="button" onClick={() => markNotificationRead(token, item.id).then(refresh)} className="text-xs text-teal hover:underline">
+                  <button type="button" onClick={() => markNotificationRead(token, item.id).then(refresh).catch(() => setStatus("Could not mark notification read."))} className="text-xs text-teal hover:underline">
                     Mark read
                   </button>
                 )}
-                <button type="button" onClick={() => deleteNotification(token, item.id).then(refresh)} className="text-xs text-muted hover:text-teal">
+                <button type="button" onClick={() => deleteNotification(token, item.id).then(refresh).catch(() => setStatus("Could not delete notification."))} className="text-xs text-muted hover:text-teal">
                   Delete
                 </button>
               </div>

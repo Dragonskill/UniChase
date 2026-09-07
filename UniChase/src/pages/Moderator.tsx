@@ -1,3 +1,4 @@
+import CatalogManager from '@/components/CatalogManager'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Loader2, LogOut, RotateCcw, Save, Trash2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
@@ -6,6 +7,7 @@ import type { ForumPost, QAPost } from '@/data/community'
 import type { NewsArticle } from '@/data/news'
 import type { StudentCouncil, StudentCouncilRole, University } from '@/data/universities'
 import {
+  moderateUniversityReview,
   createModeratorStudentCouncil,
   createModeratorStudentCouncilRole,
   deleteModeratorStudentCouncil,
@@ -13,6 +15,7 @@ import {
   fetchModeratorActivityLogs,
   fetchModeratorAnalyticsOverview,
   fetchModeratorQueue,
+  fetchModeratorSupportMessages,
   fetchModeratorTopUniversities,
   fetchStudentCouncils,
   fetchUniversities,
@@ -21,6 +24,8 @@ import {
   sendModeratorAnnouncement,
   updateModeratorCommentStatus,
   updateModeratorPostStatus,
+  updateModeratorReportStatus,
+  updateModeratorSupportMessage,
   updateModeratorUniversityImages,
   updateModeratorStudentCouncil,
   updateModeratorStudentCouncilRole,
@@ -28,6 +33,7 @@ import {
   type StudentCouncilRoleInput,
   type UniversityImageInput,
   type ModeratorQueue,
+  type SupportMessage,
 } from '@/lib/api'
 import {
   createNextId,
@@ -35,6 +41,7 @@ import {
   getManagedMembers,
   getManagedNews,
   getManagedQaPosts,
+  refreshManagedContent,
   resetManagedForumPosts,
   resetManagedMembers,
   resetManagedNews,
@@ -46,17 +53,15 @@ import {
   type SocietyMember,
 } from '@/lib/contentStore'
 import {
-  claimModeratorAccount,
   getModeratorSession,
-  hasModeratorAccount,
-  loginModerator,
   logoutModerator,
   setModeratorSession,
 } from '@/lib/moderatorAuth'
 
-type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils' | 'platform'
+type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils' | 'platform' | 'catalog'
 
 const tabs: { id: ModeratorTab; label: string }[] = [
+  { id: 'catalog', label: 'Universities & Programs' },
   { id: 'news', label: 'News' },
   { id: 'forum', label: 'Community' },
   { id: 'qa', label: 'Q&A' },
@@ -167,8 +172,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
-  const [isClaimMode, setIsClaimMode] = useState(() => !hasModeratorAccount())
-  const [name, setName] = useState('Moderator')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -190,19 +193,7 @@ function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
     setLoading(true)
 
     try {
-      if (isClaimMode) {
-        try {
-          await signInWithBackend()
-        } catch {
-          await claimModeratorAccount({ name, email, password })
-        }
-      } else {
-        try {
-          await signInWithBackend()
-        } catch {
-          await loginModerator({ email, password })
-        }
-      }
+      await signInWithBackend()
 
       onSignedIn()
     } catch (authError) {
@@ -215,33 +206,24 @@ function AuthCard({ onSignedIn }: { onSignedIn: () => void }) {
   return (
     <div className="min-h-[78vh] flex items-center justify-center px-5 py-10">
       <section className="bg-surface rounded-2xl shadow-sm w-full max-w-md p-8">
-        <GlowLetters as="h1" text={isClaimMode ? 'Create moderator access' : 'Moderator login'} variant="title" className="text-2xl font-bold text-navy mb-1" />
+        <GlowLetters as="h1" text="Moderator login" variant="title" className="text-2xl font-bold text-navy mb-1" />
         <p className="text-sm text-muted mb-6">
-          {isClaimMode ? 'Set up your private moderator account on this browser.' : 'Login to update UniChase content.'}
+          Use your administrator-issued account to manage UniChase.
         </p>
         <form onSubmit={submit} className="grid gap-4">
-          {isClaimMode && (
-            <Field label="Name">
-              <input value={name} onChange={(event) => setName(event.target.value)} className={inputClass} required minLength={2} />
-            </Field>
-          )}
           <Field label="Email">
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" className={inputClass} required />
           </Field>
           <Field label="Password">
-            <PasswordInput value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={isClaimMode ? 'new-password' : 'current-password'} className={inputClass} required minLength={8} />
+            <PasswordInput value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" className={inputClass} required minLength={8} />
           </Field>
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
           <button type="submit" disabled={loading} className="bg-navy text-white rounded-lg px-5 py-2 font-semibold hover:bg-navy-light transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {isClaimMode ? 'Create moderator' : 'Login'}
+            Login
           </button>
         </form>
-        {hasModeratorAccount() && (
-          <button type="button" onClick={() => setIsClaimMode((current) => !current)} className="mt-5 text-sm text-teal hover:underline">
-            {isClaimMode ? 'Already created? Login' : 'Need to create access?'}
-          </button>
-        )}
+
       </section>
     </div>
   )
@@ -261,6 +243,7 @@ export default function Moderator() {
   const [universities, setUniversities] = useState<University[]>([])
   const [studentCouncils, setStudentCouncils] = useState<StudentCouncil[]>([])
   const [moderatorQueue, setModeratorQueue] = useState<ModeratorQueue | null>(null)
+  const [supportMessages, setSupportMessages] = useState<SupportMessage[]>([])
   const [analyticsOverview, setAnalyticsOverview] = useState<Record<string, unknown> | null>(null)
   const [topUniversities, setTopUniversities] = useState<{ university?: { id: number; name: string; city: string }; count: number }[]>([])
   const [activityLogs, setActivityLogs] = useState<unknown[]>([])
@@ -275,6 +258,7 @@ export default function Moderator() {
     avatarUrl: '',
     contactEmail: session?.email || '',
   })
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null)
   const [status, setStatus] = useState('')
 
   useEffect(() => {
@@ -282,8 +266,9 @@ export default function Moderator() {
       return
     }
 
-    fetchUniversities().then(setUniversities).catch(() => undefined)
-    fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
+    refreshManagedContent().then(() => { setNewsItems(getManagedNews()); setForumItems(getManagedForumPosts()); setQaItems(getManagedQaPosts()); setMembers(getManagedMembers()) }).catch(() => setStatus('Could not load published content. Please retry.'))
+    fetchUniversities().then(setUniversities).catch(() => setStatus('Could not load universities.'))
+    fetchStudentCouncils().then(setStudentCouncils).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
   }, [session?.token])
 
   const signOut = () => {
@@ -291,63 +276,57 @@ export default function Moderator() {
     setSession(null)
   }
 
-  const saveNews = () => {
+  const saveNews = async () => {
     const item = { ...newsForm, id: newsForm.id || createNextId(newsItems) }
     const next = [item, ...newsItems.filter((entry) => entry.id !== item.id)]
-    setNewsItems(next)
-    setManagedNews(next)
-    setNewsForm(blankNews)
-    setStatus('News saved.')
+    try { await setManagedNews(next); setNewsItems(next); setNewsForm(blankNews); setStatus('News saved.') }
+    catch (error) { setStatus(error instanceof Error ? error.message : 'Could not publish content.') }
   }
 
-  const saveForum = () => {
+  const saveForum = async () => {
     const item = { ...forumForm, id: forumForm.id || createNextId(forumItems), replies: Number(forumForm.replies) || 0 }
     const next = [item, ...forumItems.filter((entry) => entry.id !== item.id)]
-    setForumItems(next)
-    setManagedForumPosts(next)
-    setForumForm(blankForumPost)
-    setStatus('Community post saved.')
+    try { await setManagedForumPosts(next); setForumItems(next); setForumForm(blankForumPost); setStatus('Community post saved.') }
+    catch (error) { setStatus(error instanceof Error ? error.message : 'Could not publish content.') }
   }
 
-  const saveQa = () => {
+  const saveQa = async () => {
     const item = { ...qaForm, id: qaForm.id || createNextId(qaItems), answers: Number(qaForm.answers) || 0 }
     const next = [item, ...qaItems.filter((entry) => entry.id !== item.id)]
-    setQaItems(next)
-    setManagedQaPosts(next)
-    setQaForm(blankQaPost)
-    setStatus('Q&A post saved.')
+    try { await setManagedQaPosts(next); setQaItems(next); setQaForm(blankQaPost); setStatus('Q&A post saved.') }
+    catch (error) { setStatus(error instanceof Error ? error.message : 'Could not publish content.') }
   }
 
-  const saveMember = () => {
+  const saveMember = async () => {
     const item = { ...memberForm, id: memberForm.id || createNextId(members) }
     const next = [item, ...members.filter((entry) => entry.id !== item.id)]
-    setMembers(next)
-    setManagedMembers(next)
-    setMemberForm(blankMember)
-    setStatus('Society member saved.')
+    try { await setManagedMembers(next); setMembers(next); setMemberForm(blankMember); setStatus('Society member saved.') }
+    catch (error) { setStatus(error instanceof Error ? error.message : 'Could not publish content.') }
   }
 
   const refreshStudentCouncils = () => {
     if (session?.token) {
-      fetchStudentCouncils().then(setStudentCouncils).catch(() => undefined)
+      fetchStudentCouncils().then(setStudentCouncils).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
     }
   }
 
   const refreshPlatformOps = () => {
     if (!session?.token) return
 
-    fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => undefined)
-    fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => undefined)
-    fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => undefined)
-    fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => undefined)
+    fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+    fetchModeratorSupportMessages(session.token).then(setSupportMessages).catch(() => setSupportMessages([]))
+    fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+    fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+    fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
   }
 
   useEffect(() => {
     if (tab === 'platform' && session?.token) {
-      fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => undefined)
-      fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => undefined)
-      fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => undefined)
-      fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => undefined)
+      fetchModeratorQueue(session.token).then(setModeratorQueue).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+      fetchModeratorSupportMessages(session.token).then(setSupportMessages).catch(() => setSupportMessages([]))
+      fetchModeratorAnalyticsOverview(session.token).then(setAnalyticsOverview).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+      fetchModeratorTopUniversities(session.token).then(setTopUniversities).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
+      fetchModeratorActivityLogs(session.token).then(setActivityLogs).catch(() => setStatus('This section could not load. Check your role permissions and connection.'))
     }
   }, [tab, session?.token])
 
@@ -416,10 +395,11 @@ export default function Moderator() {
       return
     }
 
-    createModeratorStudentCouncilRole(session.token, roleForm)
+    (editingRoleId ? updateModeratorStudentCouncilRole(session.token, editingRoleId, roleForm) : createModeratorStudentCouncilRole(session.token, roleForm))
       .then(() => {
         setRoleForm({ ...blankRoleForm, councilId: roleForm.councilId, universityId: roleForm.universityId })
         refreshStudentCouncils()
+        setEditingRoleId(null)
         setStatus('Student council role saved.')
       })
       .catch(() => setStatus('Could not save student council role.'))
@@ -492,6 +472,26 @@ export default function Moderator() {
       .catch(() => setStatus('Could not moderate comment.'))
   }
 
+  const moderateReport = (id: number, reportStatus: 'resolved' | 'dismissed') => {
+    if (!session?.token) return
+    updateModeratorReportStatus(session.token, id, reportStatus)
+      .then(() => {
+        refreshPlatformOps()
+        setStatus(`Report ${reportStatus}.`)
+      })
+      .catch(() => setStatus('Could not update report.'))
+  }
+
+  const moderateSupportMessage = (id: number, messageStatus: 'in progress' | 'resolved' | 'closed') => {
+    if (!session?.token) return
+    updateModeratorSupportMessage(session.token, id, messageStatus)
+      .then(() => {
+        refreshPlatformOps()
+        setStatus(`Support message marked ${messageStatus}.`)
+      })
+      .catch(() => setStatus('Could not update support message.'))
+  }
+
   const sendAnnouncement = () => {
     if (!session?.token) return
     sendModeratorAnnouncement(session.token, announcementForm)
@@ -537,12 +537,7 @@ export default function Moderator() {
         <ContentEditor
           title="News"
           onSave={saveNews}
-          onReset={() => {
-            resetManagedNews()
-            setNewsItems(getManagedNews())
-            setNewsForm(blankNews)
-            setStatus('News reset to defaults.')
-          }}
+          onReset={() => { void resetManagedNews().then(() => { setNewsItems(getManagedNews()); setNewsForm(blankNews); setStatus('News reset to defaults.') }).catch(() => setStatus('Could not reset published content.')) }}
         >
           <NewsForm form={newsForm} setForm={setNewsForm} />
           <ItemList
@@ -551,57 +546,38 @@ export default function Moderator() {
             onEdit={setNewsForm}
             onDelete={(item) => {
               const next = newsItems.filter((entry) => entry.id !== item.id)
-              setNewsItems(next)
-              setManagedNews(next)
+              void setManagedNews(next).then(() => setNewsItems(next)).catch(() => setStatus('Could not delete published content.'))
             }}
           />
         </ContentEditor>
       )}
 
       {tab === 'forum' && (
-        <ContentEditor title="Community" onSave={saveForum} onReset={() => {
-          resetManagedForumPosts()
-          setForumItems(getManagedForumPosts())
-          setForumForm(blankForumPost)
-          setStatus('Community reset to defaults.')
-        }}>
+        <ContentEditor title="Community" onSave={saveForum} onReset={() => { void resetManagedForumPosts().then(() => { setForumItems(getManagedForumPosts()); setForumForm(blankForumPost); setStatus('Community reset to defaults.') }).catch(() => setStatus('Could not reset published content.')) }}>
           <ForumForm form={forumForm} setForm={setForumForm} />
           <ItemList items={forumItems} getTitle={(item) => item.title} onEdit={setForumForm} onDelete={(item) => {
             const next = forumItems.filter((entry) => entry.id !== item.id)
-            setForumItems(next)
-            setManagedForumPosts(next)
+              void setManagedForumPosts(next).then(() => setForumItems(next)).catch(() => setStatus('Could not delete published content.'))
           }} />
         </ContentEditor>
       )}
 
       {tab === 'qa' && (
-        <ContentEditor title="Q&A" onSave={saveQa} onReset={() => {
-          resetManagedQaPosts()
-          setQaItems(getManagedQaPosts())
-          setQaForm(blankQaPost)
-          setStatus('Q&A reset to defaults.')
-        }}>
+        <ContentEditor title="Q&A" onSave={saveQa} onReset={() => { void resetManagedQaPosts().then(() => { setQaItems(getManagedQaPosts()); setQaForm(blankQaPost); setStatus('Q&A reset to defaults.') }).catch(() => setStatus('Could not reset published content.')) }}>
           <QaForm form={qaForm} setForm={setQaForm} />
           <ItemList items={qaItems} getTitle={(item) => item.title} onEdit={setQaForm} onDelete={(item) => {
             const next = qaItems.filter((entry) => entry.id !== item.id)
-            setQaItems(next)
-            setManagedQaPosts(next)
+              void setManagedQaPosts(next).then(() => setQaItems(next)).catch(() => setStatus('Could not delete published content.'))
           }} />
         </ContentEditor>
       )}
 
       {tab === 'members' && (
-        <ContentEditor title="Society Members" onSave={saveMember} onReset={() => {
-          resetManagedMembers()
-          setMembers(getManagedMembers())
-          setMemberForm(blankMember)
-          setStatus('Members reset to defaults.')
-        }}>
+        <ContentEditor title="Society Members" onSave={saveMember} onReset={() => { void resetManagedMembers().then(() => { setMembers(getManagedMembers()); setMemberForm(blankMember); setStatus('Members reset to defaults.') }).catch(() => setStatus('Could not reset published content.')) }}>
           <MemberForm form={memberForm} setForm={setMemberForm} />
           <ItemList items={members} getTitle={(item) => item.name} onEdit={setMemberForm} onDelete={(item) => {
             const next = members.filter((entry) => entry.id !== item.id)
-            setMembers(next)
-            setManagedMembers(next)
+              void setManagedMembers(next).then(() => setMembers(next)).catch(() => setStatus('Could not delete published content.'))
           }} />
         </ContentEditor>
       )}
@@ -613,6 +589,7 @@ export default function Moderator() {
           universities={universities}
           councils={studentCouncils}
           councilForm={councilForm}
+          onSelectRole={setEditingRoleId}
           roleForm={roleForm}
           imageForm={imageForm}
           profileForm={profileForm}
@@ -655,9 +632,12 @@ export default function Moderator() {
         />
       )}
 
+      {tab === 'catalog' && <CatalogManager token={session.token} />}
       {tab === 'platform' && (
         <PlatformOpsPanel
+          onModerateReview={(id, status) => { void moderateUniversityReview(session.token, id, status).then(refreshPlatformOps).catch(() => setStatus('Could not moderate review.')) }}
           queue={moderatorQueue}
+          supportMessages={supportMessages}
           analyticsOverview={analyticsOverview}
           topUniversities={topUniversities}
           activityLogs={activityLogs}
@@ -666,6 +646,8 @@ export default function Moderator() {
           onRefresh={refreshPlatformOps}
           onModeratePost={moderatePost}
           onModerateComment={moderateComment}
+          onModerateReport={moderateReport}
+          onModerateSupportMessage={moderateSupportMessage}
           onSendAnnouncement={sendAnnouncement}
         />
       )}
@@ -674,7 +656,9 @@ export default function Moderator() {
 }
 
 function PlatformOpsPanel({
+  onModerateReview,
   queue,
+  supportMessages,
   analyticsOverview,
   topUniversities,
   activityLogs,
@@ -683,9 +667,13 @@ function PlatformOpsPanel({
   onRefresh,
   onModeratePost,
   onModerateComment,
+  onModerateReport,
+  onModerateSupportMessage,
   onSendAnnouncement,
 }: {
+  onModerateReview: (id: number, status: string) => void
   queue: ModeratorQueue | null
+  supportMessages: SupportMessage[]
   analyticsOverview: Record<string, unknown> | null
   topUniversities: { university?: { id: number; name: string; city: string }; count: number }[]
   activityLogs: unknown[]
@@ -694,6 +682,8 @@ function PlatformOpsPanel({
   onRefresh: () => void
   onModeratePost: (id: number, data: { status?: string; pinned?: boolean; officialAnswer?: string | null }) => void
   onModerateComment: (id: number, data: { status?: string; official?: boolean }) => void
+  onModerateReport: (id: number, status: 'resolved' | 'dismissed') => void
+  onModerateSupportMessage: (id: number, status: 'in progress' | 'resolved' | 'closed') => void
   onSendAnnouncement: () => void
 }) {
   const overviewItems: Array<[string, unknown]> = [
@@ -720,6 +710,12 @@ function PlatformOpsPanel({
           ))}
         </div>
 
+        <QueueSection title="Pending university reviews" empty="No pending reviews.">
+          {queue?.pendingUniversityReviews?.map(review => <QueueRow key={review.id} title={review.comment} meta={`${review.university.name} · ${review.user.name} · ${review.overallRating}/5`}>
+            <button onClick={() => onModerateReview(review.id, 'approved')} className="text-xs text-teal">Approve</button>
+            <button onClick={() => onModerateReview(review.id, 'rejected')} className="text-xs text-muted">Reject</button>
+          </QueueRow>)}
+        </QueueSection>
         <QueueSection title="Pending posts" empty="No pending posts.">
           {queue?.pendingPosts?.map((post) => (
             <QueueRow key={post.id} title={post.title} meta={`${post.category} - ${post.author?.name || 'Student'}`}>
@@ -746,6 +742,29 @@ function PlatformOpsPanel({
               <button onClick={() => onModerateComment(comment.id, { status: 'published' })} className="text-xs text-teal hover:underline">Restore</button>
               <button onClick={() => onModerateComment(comment.id, { status: 'hidden' })} className="text-xs text-muted hover:text-teal">Hide</button>
               <button onClick={() => onModerateComment(comment.id, { official: true })} className="text-xs text-muted hover:text-teal">Official</button>
+            </QueueRow>
+          ))}
+        </QueueSection>
+
+        <QueueSection title="Open reports" empty="No open reports.">
+          {queue?.reports?.map((report) => (
+            <QueueRow
+              key={report.id}
+              title={report.post?.title || report.comment?.content.slice(0, 120) || `Report #${report.id}`}
+              meta={`${report.reason} · reported by ${report.reporter?.name || 'Student'}`}
+            >
+              <button onClick={() => onModerateReport(report.id, 'resolved')} className="text-xs text-teal hover:underline">Resolve</button>
+              <button onClick={() => onModerateReport(report.id, 'dismissed')} className="text-xs text-muted hover:text-teal">Dismiss</button>
+            </QueueRow>
+          ))}
+        </QueueSection>
+
+        <QueueSection title="Support inbox" empty="No open support messages.">
+          {supportMessages.filter((message) => !['resolved', 'closed'].includes(message.status)).map((message) => (
+            <QueueRow key={message.id} title={message.subject} meta={`${message.name} · ${message.email} · ${message.status}`}>
+              <button onClick={() => onModerateSupportMessage(message.id, 'in progress')} className="text-xs text-teal hover:underline">In progress</button>
+              <button onClick={() => onModerateSupportMessage(message.id, 'resolved')} className="text-xs text-muted hover:text-teal">Resolve</button>
+              <button onClick={() => onModerateSupportMessage(message.id, 'closed')} className="text-xs text-muted hover:text-teal">Close</button>
             </QueueRow>
           ))}
         </QueueSection>
@@ -846,6 +865,7 @@ function StudentCouncilManager({
   universities,
   councils,
   councilForm,
+  onSelectRole,
   roleForm,
   imageForm,
   profileForm,
@@ -867,6 +887,7 @@ function StudentCouncilManager({
   universities: University[]
   councils: StudentCouncil[]
   councilForm: StudentCouncilInput
+  onSelectRole: (id: number | null) => void
   roleForm: StudentCouncilRoleInput
   imageForm: UniversityImageInput
   profileForm: ProfileForm
@@ -1070,6 +1091,7 @@ function StudentCouncilManager({
               />
               Add myself as this role
             </label>
+            <button onClick={() => { onSelectRole(null); setRoleForm({ ...blankRoleForm, councilId: roleForm.councilId, universityId: roleForm.universityId }) }} className="text-sm text-teal">Start a new role</button>
             <button onClick={onSaveRole} disabled={!token || !selectedCouncil} className="bg-navy text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-navy-light transition-colors disabled:opacity-60">
               Save role
             </button>
@@ -1110,7 +1132,7 @@ function StudentCouncilManager({
                   <div key={role.id} className="rounded border border-gray-100 p-2">
                     <div className="flex items-start justify-between gap-2">
                       <button
-                        onClick={() => setRoleForm({
+                        onClick={() => { onSelectRole(role.id); setRoleForm({
                           councilId: council.id,
                           universityId: council.universityId,
                           adminUserId: role.adminUserId,
@@ -1125,7 +1147,7 @@ function StudentCouncilManager({
                           status: role.status,
                           verificationStatus: role.verificationStatus,
                           sourceUrl: role.sourceUrl || '',
-                        })}
+                        }) }}
                         className="text-left text-xs font-medium text-navy hover:text-teal transition-colors"
                       >
                         {role.roleTitle}

@@ -1,3 +1,8 @@
+import { syncCalendarSources } from "../services/calendarSources.js"
+import { eventsToIcs } from "../calendar.js"
+import { assertOwnedLinks, assertDateRange, mapPrivateDocument } from "../ownership.js"
+import { parsePagination } from "../pagination.js"
+import { scoreUniversities } from "../recommendations.js"
 import { Router } from "express"
 import { requireStudent } from "../auth.js"
 import { ApiError, asyncHandler, isPrismaMissingRecord } from "../errors.js"
@@ -66,6 +71,7 @@ function mapApplication(item) {
 
 function mapCalendarEvent(event) {
   return {
+    sourceKey: event.sourceKey,
     id: event.id,
     title: event.title,
     description: event.description,
@@ -85,45 +91,13 @@ function mapCalendarEvent(event) {
   }
 }
 
-function dateToIcs(value) {
-  return new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")
-}
-
-function escapeIcs(value = "") {
-  return String(value).replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n")
-}
-
-function eventsToIcs(events) {
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//UniChase//Student Calendar//EN",
-  ]
-
-  events.forEach((event) => {
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:unichase-${event.id}@uni-chase`,
-      `DTSTAMP:${dateToIcs(new Date())}`,
-      `DTSTART:${dateToIcs(event.startDate)}`,
-      event.endDate ? `DTEND:${dateToIcs(event.endDate)}` : "",
-      `SUMMARY:${escapeIcs(event.title)}`,
-      event.description ? `DESCRIPTION:${escapeIcs(event.description)}` : "",
-      `CATEGORIES:${escapeIcs(event.eventType)}`,
-      "END:VEVENT",
-    )
-  })
-
-  lines.push("END:VCALENDAR")
-  return lines.filter(Boolean).join("\r\n")
-}
-
 async function createNotification(prisma, data) {
   return prisma.notification.create({ data }).catch(() => null)
 }
 
 async function upsertApplicationDeadlineEvent(prisma, application) {
   if (!application.applicationDeadline) {
+    await prisma.calendarEvent.deleteMany({ where: { userId: application.userId, applicationId: application.id, eventType: "application_deadline" } })
     return
   }
 
@@ -179,6 +153,12 @@ export function createUserRouter(prisma) {
     "/profile",
     validateBody(userProfileSchema),
     asyncHandler(async (req, res) => {
+      if (Object.hasOwn(req.body, "budgetMin") || Object.hasOwn(req.body, "budgetMax")) {
+        const current = await prisma.studentUser.findUnique({ where: { id: req.user.id }, select: { budgetMin: true, budgetMax: true } })
+        const min = Object.hasOwn(req.body, "budgetMin") ? req.body.budgetMin : current.budgetMin
+        const max = Object.hasOwn(req.body, "budgetMax") ? req.body.budgetMax : current.budgetMax
+        if (min != null && max != null && min > max) throw new ApiError(400, "Minimum budget cannot exceed maximum budget")
+      }
       const user = await prisma.studentUser.update({
         where: { id: req.user.id },
         data: req.body,
@@ -193,6 +173,7 @@ export function createUserRouter(prisma) {
     "/saved-universities",
     asyncHandler(async (req, res) => {
       const saved = await prisma.savedUniversity.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         include: { university: true },
         orderBy: { createdAt: "desc" },
@@ -273,10 +254,30 @@ export function createUserRouter(prisma) {
     }),
   )
 
+  router.get("/followed-universities", asyncHandler(async (req, res) => {
+    const { take, skip } = parsePagination(req.query, 100)
+    const items = await prisma.followedUniversity.findMany({ where: { userId: req.user.id }, include: { university: true }, orderBy: { createdAt: "desc" }, take, skip })
+    res.json({ data: items.map((item) => ({ createdAt: item.createdAt, university: mapUniversityForClient(item.university) })) })
+  }))
+  router.post("/followed-universities", validateBody(savedUniversitySchema), asyncHandler(async (req, res) => {
+    await assertOwnedLinks(prisma, req.user.id, req.body)
+    const item = await prisma.followedUniversity.upsert({ where: { userId_universityId: { userId: req.user.id, universityId: req.body.universityId } }, update: {}, create: { userId: req.user.id, universityId: req.body.universityId }, include: { university: true } })
+    res.status(201).json({ data: { createdAt: item.createdAt, university: mapUniversityForClient(item.university) } })
+  }))
+  router.delete("/followed-universities/:id", asyncHandler(async (req, res) => {
+    await prisma.followedUniversity.deleteMany({ where: { userId: req.user.id, universityId: parsePositiveId(req.params.id) } })
+    res.json({ data: { ok: true } })
+  }))
+  router.delete("/deadlines/:id", asyncHandler(async (req, res) => {
+    await prisma.userDeadline.deleteMany({ where: { userId: req.user.id, id: parsePositiveId(req.params.id) } })
+    res.json({ data: { ok: true } })
+  }))
+
   router.get(
     "/deadlines",
     asyncHandler(async (req, res) => {
       const reminders = await prisma.userDeadline.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         include: { university: true },
         orderBy: [{ important: "desc" }, { updatedAt: "desc" }],
@@ -298,6 +299,7 @@ export function createUserRouter(prisma) {
     "/deadlines",
     validateBody(userDeadlineSchema),
     asyncHandler(async (req, res) => {
+      await assertOwnedLinks(prisma, req.user.id, req.body)
       const reminder = await prisma.userDeadline.upsert({
         where: {
           userId_universityId_deadlineType: {
@@ -336,6 +338,7 @@ export function createUserRouter(prisma) {
     "/checklist",
     asyncHandler(async (req, res) => {
       const items = await prisma.checklistItem.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         orderBy: { id: "asc" },
       })
@@ -348,14 +351,15 @@ export function createUserRouter(prisma) {
     "/checklist",
     validateBody(checklistPatchSchema),
     asyncHandler(async (req, res) => {
-      await prisma.checklistItem.deleteMany({ where: { userId: req.user.id } })
-      const items = await prisma.checklistItem.createManyAndReturn({
-        data: req.body.items.map((item) => ({
-          userId: req.user.id,
-          title: item.title,
-          completed: item.completed,
-          dueDate: item.dueDate,
-        })),
+      const items = await prisma.$transaction(async (tx) => {
+        const ids = req.body.items.filter((item) => item.id).map((item) => item.id)
+        if (new Set(ids).size !== ids.length) throw new ApiError(400, "Checklist item ids must be unique")
+        const owned = await tx.checklistItem.count({ where: { userId: req.user.id, id: { in: ids } } })
+        if (owned !== ids.length) throw new ApiError(404, "Checklist item not found")
+        await tx.checklistItem.deleteMany({ where: { userId: req.user.id, id: { notIn: ids } } })
+        return Promise.all(req.body.items.map(({ id, ...data }) => id
+          ? tx.checklistItem.update({ where: { id, userId: req.user.id }, data })
+          : tx.checklistItem.create({ data: { ...data, userId: req.user.id } })))
       })
 
       res.json({ data: items })
@@ -388,6 +392,12 @@ export function createUserRouter(prisma) {
     "/onboarding",
     validateBody(onboardingPatchSchema),
     asyncHandler(async (req, res) => {
+      const current = await prisma.userOnboardingPreference.findUnique({ where: { userId: req.user.id } })
+      const merged = { ...current, ...req.body }
+      if ((merged.budgetMin != null && merged.budgetMax != null && merged.budgetMin > merged.budgetMax) ||
+          (merged.qsRankMin != null && merged.qsRankMax != null && merged.qsRankMin > merged.qsRankMax)) {
+        throw new ApiError(400, "Minimum onboarding values cannot exceed maximum values")
+      }
       const preference = await prisma.userOnboardingPreference.upsert({
         where: { userId: req.user.id },
         update: req.body,
@@ -402,55 +412,102 @@ export function createUserRouter(prisma) {
     "/onboarding/generate-dashboard",
     asyncHandler(async (req, res) => {
       const preference = await prisma.userOnboardingPreference.findUnique({ where: { userId: req.user.id } })
-      const recommended = await prisma.university.findMany({
-        where: {
-          ...(preference?.preferredCity ? { city: { contains: preference.preferredCity, mode: "insensitive" } } : {}),
-          ...(preference?.desiredMajor ? { programs: { hasSome: [preference.desiredMajor] } } : {}),
-          ...(preference?.qsRankMax ? { qsRanking: { lte: preference.qsRankMax } } : {}),
-        },
-        orderBy: [{ qsRanking: "asc" }, { name: "asc" }],
-        take: 4,
-      })
+      if (!preference) throw new ApiError(409, "Complete or skip onboarding before generating the dashboard")
 
-      const fallback = recommended.length > 0 ? recommended : await prisma.university.findMany({ orderBy: { qsRanking: "asc" }, take: 4 })
-      await Promise.all(
-        fallback.slice(0, 3).map((university) =>
-          prisma.savedUniversity.upsert({
-            where: { userId_universityId: { userId: req.user.id, universityId: university.id } },
+      const universities = await prisma.university.findMany({
+        orderBy: [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "asc" }],
+        take: 1000,
+      })
+      const recommendations = scoreUniversities(universities, {
+        preferredMajor: preference.desiredMajor,
+        preferredCity: preference.preferredCity,
+        level: preference.degreeLevel,
+        language: preference.languagePreference,
+        dormitoryRequired: preference.dormitoryRequired,
+        scholarshipPreferred: /yes|prefer|required|important/i.test(preference.scholarshipPreference || ""),
+        tuitionMin: preference.budgetMin,
+        tuitionMax: preference.budgetMax,
+        rankingMin: preference.qsRankMin,
+        rankingMax: preference.qsRankMax,
+      })
+      const suggested = recommendations.slice(0, 4)
+      const primary = suggested[0]?.university
+
+      const created = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "StudentUser" WHERE "id" = ${req.user.id} FOR UPDATE`
+        for (const item of suggested.slice(0, 3)) {
+          await tx.savedUniversity.upsert({
+            where: { userId_universityId: { userId: req.user.id, universityId: item.university.id } },
             update: {},
-            create: { userId: req.user.id, universityId: university.id, notes: "Suggested from onboarding" },
-          }),
-        ),
-      )
+            create: { userId: req.user.id, universityId: item.university.id, notes: "Suggested from onboarding" },
+          })
+        }
 
-      const checklistTitles = [
-        "Confirm target intake",
-        "Prepare passport and transcripts",
-        "Shortlist 3 universities",
-        "Check visa document requirements",
-      ]
-      const existingChecklist = await prisma.checklistItem.count({ where: { userId: req.user.id } })
-      if (existingChecklist === 0) {
-        await prisma.checklistItem.createMany({
-          data: checklistTitles.map((title) => ({ userId: req.user.id, title, completed: false })),
-        })
-      }
+        let roadmapCreated = false
+        if (await tx.applicationRoadmap.count({ where: { userId: req.user.id } }) === 0) {
+          await tx.applicationRoadmap.create({
+            data: {
+              userId: req.user.id,
+              universityId: primary?.id ?? null,
+              targetMajor: preference.desiredMajor || "Undecided program",
+              degreeLevel: preference.degreeLevel || "Undecided degree level",
+              intake: preference.targetIntake || "Next available intake",
+              preparationStatus: preference.preparationStage || "Planning",
+              steps: { create: [
+                { title: "Confirm program and official requirements", description: "Use the official university admissions page.", sortOrder: 1 },
+                { title: "Prepare passport and academic records", sortOrder: 2 },
+                { title: "Confirm language test requirements", sortOrder: 3 },
+                { title: "Review tuition, scholarships, and housing", sortOrder: 4 },
+                { title: "Submit the application before the official deadline", sortOrder: 5 },
+                { title: "Prepare the student visa application", sortOrder: 6 },
+              ] },
+            },
+          })
+          roadmapCreated = true
+        }
 
-      await prisma.userOnboardingPreference.upsert({
-        where: { userId: req.user.id },
-        update: { onboardingCompleted: true },
-        create: { userId: req.user.id, onboardingCompleted: true },
-      })
+        let documentChecklistCreated = false
+        if (await tx.documentChecklist.count({ where: { userId: req.user.id } }) === 0) {
+          await tx.documentChecklist.create({
+            data: {
+              userId: req.user.id,
+              universityId: primary?.id ?? null,
+              targetMajor: preference.desiredMajor,
+              degreeLevel: preference.degreeLevel || "Undecided degree level",
+              nationality: preference.nationality,
+              languageTrack: preference.languagePreference || "Undecided",
+              items: { create: ["Application form", "Passport copy", "Academic transcript", "Graduation certificate", "Personal statement", "Financial proof"].map((title, index) => ({ title, sortOrder: index + 1 })) },
+            },
+          })
+          documentChecklistCreated = true
+        }
 
-      await createNotification(prisma, {
-        userId: req.user.id,
-        type: "dashboard_setup",
-        title: "Dashboard setup is ready",
-        message: "UniChase created starter saved universities, checklist tasks, and recommendations from your onboarding answers.",
-        linkUrl: "/dashboard",
-      })
+        let visaChecklistCreated = false
+        if (await tx.visaChecklistItem.count({ where: { userId: req.user.id } }) === 0) {
+          await tx.visaChecklistItem.createMany({ data: ["Certificate of admission", "Passport and photo", "Visa application form", "Financial proof", "Academic records", "Housing address"].map((title, index) => ({ userId: req.user.id, title, description: "Confirm current requirements with the Korean embassy or consulate serving your country.", sortOrder: index + 1 })) })
+          visaChecklistCreated = true
+        }
 
-      res.json({ data: { recommendedUniversities: fallback.map(mapUniversityForClient), checklistCreated: existingChecklist === 0 } })
+        const checklistCreated = await tx.checklistItem.count({ where: { userId: req.user.id } }) === 0
+        if (checklistCreated) await tx.checklistItem.createMany({ data: ["Confirm target intake", "Prepare passport and transcripts", "Shortlist 3 universities", "Check visa document requirements"].map((title) => ({ userId: req.user.id, title })) })
+
+        const resultSnapshot = suggested.map((item) => ({ universityId: item.university.id, score: item.score, reasons: item.reasons, disadvantages: item.disadvantages }))
+        const previousRecommendation = await tx.recommendationPreference.findFirst({ where: { userId: req.user.id }, orderBy: { createdAt: "desc" } })
+        const recommendationData = { userId: req.user.id, preferredMajor: preference.desiredMajor, preferredCity: preference.preferredCity, language: preference.languagePreference, dormitoryRequired: preference.dormitoryRequired, scholarshipPreferred: /yes|prefer|required|important/i.test(preference.scholarshipPreference || ""), level: preference.degreeLevel, rankingMin: preference.qsRankMin, rankingMax: preference.qsRankMax, tuitionMin: preference.budgetMin, tuitionMax: preference.budgetMax, results: resultSnapshot }
+        if (previousRecommendation) await tx.recommendationPreference.update({ where: { id: previousRecommendation.id }, data: recommendationData })
+        else await tx.recommendationPreference.create({ data: recommendationData })
+
+        await tx.userOnboardingPreference.update({ where: { userId: req.user.id }, data: { onboardingCompleted: true } })
+        if (roadmapCreated || documentChecklistCreated || visaChecklistCreated || checklistCreated) {
+          await tx.notification.create({ data: { userId: req.user.id, type: "dashboard_setup", title: "Dashboard setup is ready", message: "UniChase created starter planning tools from your onboarding answers.", linkUrl: "/dashboard" } })
+        }
+        return { roadmapCreated, documentChecklistCreated, visaChecklistCreated, checklistCreated }
+      }, { isolationLevel: "Serializable" })
+
+      res.json({ data: {
+        recommendedUniversities: suggested.map((item) => ({ university: mapUniversityForClient(item.university), score: item.score, reasons: item.reasons, disadvantages: item.disadvantages })),
+        ...created,
+      } })
     }),
   )
 
@@ -458,6 +515,7 @@ export function createUserRouter(prisma) {
     "/applications",
     asyncHandler(async (req, res) => {
       const applications = await prisma.userApplication.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         include: { university: true },
         orderBy: [{ updatedAt: "desc" }],
@@ -471,12 +529,12 @@ export function createUserRouter(prisma) {
     "/applications",
     validateBody(applicationCreateSchema),
     asyncHandler(async (req, res) => {
-      const application = await prisma.userApplication.create({
-        data: { ...req.body, userId: req.user.id },
-        include: { university: true },
+      await assertOwnedLinks(prisma, req.user.id, req.body)
+      const application = await prisma.$transaction(async (tx) => {
+        const created = await tx.userApplication.create({ data: { ...req.body, userId: req.user.id }, include: { university: true } })
+        await upsertApplicationDeadlineEvent(tx, created)
+        return created
       })
-
-      await upsertApplicationDeadlineEvent(prisma, application)
       await createNotification(prisma, {
         userId: req.user.id,
         type: "application_status_changed",
@@ -512,13 +570,11 @@ export function createUserRouter(prisma) {
       const existing = await prisma.userApplication.findFirst({ where: { id, userId: req.user.id }, include: { university: true } })
       if (!existing) throw new ApiError(404, "Application not found")
 
-      const application = await prisma.userApplication.update({
-        where: { id },
-        data: req.body,
-        include: { university: true },
+      const application = await prisma.$transaction(async (tx) => {
+        const updated = await tx.userApplication.update({ where: { id, userId: req.user.id }, data: req.body, include: { university: true } })
+        await upsertApplicationDeadlineEvent(tx, updated)
+        return updated
       })
-
-      await upsertApplicationDeadlineEvent(prisma, application)
       if (req.body.status && req.body.status !== existing.status) {
         await createNotification(prisma, {
           userId: req.user.id,
@@ -548,11 +604,12 @@ export function createUserRouter(prisma) {
     "/documents",
     asyncHandler(async (req, res) => {
       const documents = await prisma.userDocument.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         orderBy: [{ updatedAt: "desc" }],
       })
 
-      res.json({ data: documents })
+      res.json({ data: documents.map(mapPrivateDocument) })
     }),
   )
 
@@ -560,8 +617,9 @@ export function createUserRouter(prisma) {
     "/documents",
     validateBody(userDocumentCreateSchema),
     asyncHandler(async (req, res) => {
+      await assertOwnedLinks(prisma, req.user.id, req.body)
       const document = await prisma.userDocument.create({ data: { ...req.body, userId: req.user.id } })
-      res.status(201).json({ data: document })
+      res.status(201).json({ data: mapPrivateDocument(document) })
     }),
   )
 
@@ -570,7 +628,7 @@ export function createUserRouter(prisma) {
     asyncHandler(async (req, res) => {
       const document = await prisma.userDocument.findFirst({ where: { id: parsePositiveId(req.params.id), userId: req.user.id } })
       if (!document) throw new ApiError(404, "Document not found")
-      res.json({ data: document })
+      res.json({ data: mapPrivateDocument(document) })
     }),
   )
 
@@ -579,10 +637,11 @@ export function createUserRouter(prisma) {
     validateBody(userDocumentUpdateSchema),
     asyncHandler(async (req, res) => {
       const id = parsePositiveId(req.params.id)
+      await assertOwnedLinks(prisma, req.user.id, req.body)
       const result = await prisma.userDocument.updateMany({ where: { id, userId: req.user.id }, data: req.body })
       if (result.count === 0) throw new ApiError(404, "Document not found")
       const document = await prisma.userDocument.findFirst({ where: { id, userId: req.user.id } })
-      res.json({ data: document })
+      res.json({ data: mapPrivateDocument(document) })
     }),
   )
 
@@ -604,7 +663,9 @@ export function createUserRouter(prisma) {
   router.get(
     "/calendar/events",
     asyncHandler(async (req, res) => {
+      await syncCalendarSources(prisma, req.user.id)
       const events = await prisma.calendarEvent.findMany({
+        ...(() => { const { take, skip } = parsePagination(req.query, 100); return { take, skip } })(),
         where: { userId: req.user.id },
         include: { university: { select: { id: true, name: true, slug: true } } },
         orderBy: { startDate: "asc" },
@@ -618,6 +679,8 @@ export function createUserRouter(prisma) {
     "/calendar/events",
     validateBody(calendarEventCreateSchema),
     asyncHandler(async (req, res) => {
+      await assertOwnedLinks(prisma, req.user.id, req.body)
+      assertDateRange(req.body)
       const event = await prisma.calendarEvent.create({
         data: { ...req.body, userId: req.user.id },
         include: { university: { select: { id: true, name: true, slug: true } } },
@@ -632,6 +695,17 @@ export function createUserRouter(prisma) {
     validateBody(calendarEventUpdateSchema),
     asyncHandler(async (req, res) => {
       const id = parsePositiveId(req.params.id)
+      const existing = await prisma.calendarEvent.findFirst({ where: { id, userId: req.user.id } })
+      if (!existing) throw new ApiError(404, "Calendar event not found")
+      await assertOwnedLinks(prisma, req.user.id, req.body)
+      assertDateRange({ ...existing, ...req.body })
+      if (existing.sourceKey?.startsWith('auto:') && req.body.status && req.body.status !== 'cancelled') {
+        const [, kind, sourceId] = existing.sourceKey.split(':')
+        const completed = req.body.status === 'completed'
+        if (kind === 'roadmap') await prisma.roadmapStep.updateMany({ where: { id: Number(sourceId), roadmap: { userId: req.user.id } }, data: { completed } })
+        if (kind === 'visa') await prisma.visaChecklistItem.updateMany({ where: { id: Number(sourceId), userId: req.user.id }, data: { completed } })
+        if (kind === 'checklist') await prisma.checklistItem.updateMany({ where: { id: Number(sourceId), userId: req.user.id }, data: { completed } })
+      }
       const result = await prisma.calendarEvent.updateMany({ where: { id, userId: req.user.id }, data: req.body })
       if (result.count === 0) throw new ApiError(404, "Calendar event not found")
       const event = await prisma.calendarEvent.findFirst({
@@ -653,7 +727,8 @@ export function createUserRouter(prisma) {
   router.get(
     "/calendar/export.ics",
     asyncHandler(async (req, res) => {
-      const events = await prisma.calendarEvent.findMany({ where: { userId: req.user.id }, orderBy: { startDate: "asc" } })
+      await syncCalendarSources(prisma, req.user.id)
+      const events = await prisma.calendarEvent.findMany({ where: { userId: req.user.id }, orderBy: { startDate: "asc" }, take: 5000 })
       res.setHeader("Content-Type", "text/calendar; charset=utf-8")
       res.setHeader("Content-Disposition", "attachment; filename=unichase-calendar.ics")
       res.send(eventsToIcs(events))
