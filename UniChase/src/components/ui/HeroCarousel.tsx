@@ -3,7 +3,6 @@ import { Link } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { slides } from "@/data/carousel"
-import GlowLetters from "@/components/ui/GlowLetters"
 
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0)
@@ -27,8 +26,8 @@ export default function HeroCarousel() {
       <div className="hero-carousel-overlay absolute inset-0" />
       <motion.div initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : 0.12 }} className="absolute bottom-16 left-5 max-w-2xl pr-5 text-white sm:bottom-20 sm:left-12 sm:pr-8">
         <span className="mb-3 inline-block rounded-full bg-teal px-3 py-1 text-xs font-semibold uppercase tracking-widest">{slide.category}</span>
-        <GlowLetters as="h2" text={slide.title} variant="hero" className="mb-5 mt-3 text-2xl font-bold leading-tight sm:text-3xl md:text-4xl" />
-        <Link to={slide.link} className="hero-carousel-cta inline-block rounded-xl bg-white px-5 py-2.5 font-semibold text-navy shadow-lg hover:bg-cream">Read story</Link>
+        <h2 className="mb-5 mt-3 text-2xl font-bold leading-tight text-white drop-shadow-lg sm:text-3xl md:text-4xl">{slide.title}</h2>
+        <Link to={slide.link} className="hero-carousel-cta inline-block rounded-xl bg-white px-5 py-2.5 font-semibold text-navy shadow-lg hover:bg-cream">Read More</Link>
       </motion.div>
     </motion.div></AnimatePresence>
     <button type="button" onClick={() => setPaused((value) => !value)} aria-label={paused ? "Resume automatic slides" : "Pause automatic slides"} className="hero-carousel-arrow absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full">{paused ? <Play className="h-4 w-4" aria-hidden="true" /> : <Pause className="h-4 w-4" aria-hidden="true" />}</button>

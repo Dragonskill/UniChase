@@ -316,9 +316,9 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
   .university-card-shell {
     display: flex;
     flex-direction: column;
-    height: 560px;
-    min-height: 560px;
-    max-height: 560px;
+    height: 540px;
+    min-height: 540px;
+    max-height: 540px;
     overflow: hidden;
     border-radius: 1rem;
     background-color: var(--card);
@@ -326,9 +326,9 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
 
   .university-card-media {
     position: relative;
-    flex: 0 0 220px;
-    height: 220px;
-    min-height: 220px;
+    flex: 0 0 210px;
+    height: 210px;
+    min-height: 210px;
     overflow: hidden;
   }
 
@@ -476,15 +476,15 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
 
   @media (max-width: 480px) {
     .university-card-shell {
-      height: 540px;
-      min-height: 540px;
-      max-height: 540px;
+      height: 510px;
+      min-height: 510px;
+      max-height: 510px;
     }
 
     .university-card-media {
-      flex-basis: 200px;
-      height: 200px;
-      min-height: 200px;
+      flex-basis: 185px;
+      height: 185px;
+      min-height: 185px;
     }
   }
 
@@ -663,7 +663,6 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
 .university-card-main-link::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; }
 .university-card-main-link:focus-visible { outline: none; }
 .university-card-main-link:focus-visible::after { outline: 3px solid var(--accent); outline-offset: -3px; }
-.university-card-shell { height: 574px; min-height: 574px; max-height: 574px; }
 .university-card-link { content-visibility: visible; }
 .university-follow-button:disabled { cursor: wait; opacity: .75; }
 html[data-theme="dark"] .bg-teal.text-white { color: #06231F; }
@@ -674,5 +673,4 @@ html[data-theme="dark"] .bg-yellow-50, html[data-theme="dark"] .bg-yellow-100 { 
 :where(button):disabled { cursor: not-allowed; }
 input, select, textarea { min-width: 0; max-width: 100%; }
 :where(main, section, article) { overflow-wrap: anywhere; }
-@media (max-width: 480px) { .university-card-shell { height: 554px; min-height: 554px; max-height: 554px; } }
 @media (prefers-reduced-motion: reduce) { .university-card-link:hover { transform: none; } }

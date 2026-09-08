@@ -133,9 +133,9 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden xl:flex gap-4">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} className="text-sm font-medium text-muted hover:text-teal transition-colors">
+            <Link key={l.to} to={l.to} className={`${l.to === '/match' ? 'hidden xl:inline' : ''} whitespace-nowrap text-sm font-medium text-muted hover:text-teal transition-colors`}>
               {t(l.labelKey)}
             </Link>
           ))}
@@ -143,7 +143,7 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          <div className="relative hidden sm:block">
+          <div className="relative hidden sm:block lg:hidden xl:block">
             <button type="button" onClick={() => setSearchOpen(!searchOpen)} aria-expanded={searchOpen} aria-controls="navbar-search" aria-label="Search universities" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-teal"><Search className="h-5 w-5" aria-hidden="true" /></button>
             {searchOpen && <form id="navbar-search" onSubmit={search} className="absolute right-0 top-12 flex w-72 gap-2 rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
               <input type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities" placeholder={t('search')} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" />
@@ -154,7 +154,7 @@ export default function Navbar() {
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
             aria-label="Language"
-            className="hidden sm:block bg-cream border border-gray-200 rounded-full px-2 py-1 text-xs text-muted focus:outline-none focus:ring-2 focus:ring-teal"
+            className="hidden sm:block lg:hidden xl:block bg-cream border border-gray-200 rounded-full px-2 py-1 text-xs text-muted focus:outline-none focus:ring-2 focus:ring-teal"
           >
             <option value="en">EN</option>
             <option value="ko">KO</option>
@@ -162,10 +162,10 @@ export default function Navbar() {
             <option value="uz">UZ</option>
           </select>
 
-          <div className="hidden sm:block">{themeToggle}</div>
+          <div className="hidden sm:block lg:hidden xl:block">{themeToggle}</div>
 
           {signedIn && (
-            <div className="relative hidden sm:block">
+            <div className="relative hidden sm:block lg:hidden xl:block">
               <button
                 type="button"
                 onClick={() => setNotificationOpen((current) => !current)}
@@ -211,12 +211,12 @@ export default function Navbar() {
           )}
 
           {/* Auth - desktop */}
-          <div className="hidden xl:block"><LoginDropdown /></div>
+          <div className="hidden lg:block"><LoginDropdown /></div>
           <Link to="/dashboard" className="hidden xl:inline text-sm font-medium text-muted hover:text-teal transition-colors">{t('dashboard')}</Link>
-          {!signedIn && <Link to="/signup" className="hidden xl:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>}
+          {!signedIn && <Link to="/signup" className="hidden lg:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>}
 
           {/* Hamburger - mobile */}
-          <button onClick={() => setMenuOpen(!menuOpen)} className="xl:hidden p-2 text-navy" aria-label="Menu" aria-expanded={menuOpen} aria-controls="mobile-menu">
+          <button onClick={() => setMenuOpen(!menuOpen)} className="lg:hidden p-2 text-navy" aria-label="Menu" aria-expanded={menuOpen} aria-controls="mobile-menu">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
             </svg>
@@ -226,7 +226,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div id="mobile-menu" className="xl:hidden max-h-[calc(100dvh-80px)] overflow-y-auto border-t border-gray-200 bg-surface px-5 py-4 flex flex-col gap-3">
+        <div id="mobile-menu" className="lg:hidden max-h-[calc(100dvh-80px)] overflow-y-auto border-t border-gray-200 bg-surface px-5 py-4 flex flex-col gap-3">
           <form onSubmit={search} className="flex gap-2"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities" placeholder={t("search")} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" /><button className="rounded-lg bg-navy px-4 text-white">Go</button></form>{links.map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)} className="text-sm font-medium text-ink hover:text-teal">
               {t(l.labelKey)}
