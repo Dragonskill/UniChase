@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
 import { universities as fallbackUniversities, type University } from "@/data/universities"
@@ -444,20 +444,25 @@ function UniversityList() {
           </div>
         )}
 
-        {!isLoading && universityList.map((uni) => (
-          <UniversityCard
+        {!isLoading && universityList.map((uni, index) => (
+          <div
             key={uni.id}
-            uni={uni}
-            isSaved={savedIds.includes(uni.id)}
-            isFollowed={followedIds.includes(uni.id)}
-            savePending={pending.includes('saved-' + uni.id)}
-            followPending={pending.includes('followed-' + uni.id)}
-            onToggleFollowed={handleFollowed}
-            isCompared={compareIds.includes(uni.id)}
-            compareDisabled={compareIds.length >= 4}
-            onToggleSaved={handleSaved}
-            onToggleCompare={handleCompare}
-          />
+            className="university-card-entry min-w-0"
+            style={{ "--card-index": Math.min(index, 8) } as CSSProperties}
+          >
+            <UniversityCard
+              uni={uni}
+              isSaved={savedIds.includes(uni.id)}
+              isFollowed={followedIds.includes(uni.id)}
+              savePending={pending.includes('saved-' + uni.id)}
+              followPending={pending.includes('followed-' + uni.id)}
+              onToggleFollowed={handleFollowed}
+              isCompared={compareIds.includes(uni.id)}
+              compareDisabled={compareIds.length >= 4}
+              onToggleSaved={handleSaved}
+              onToggleCompare={handleCompare}
+            />
+          </div>
         ))}
       </motion.div>
       {total > 12 && <nav aria-label="University result pages" className="mt-6 flex items-center justify-center gap-4"><button type="button" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)} className="rounded-full border border-gray-200 px-4 py-2 text-sm disabled:opacity-40">Previous</button><span className="text-sm text-muted">Page {page} of {Math.ceil(total / 12)}</span><button type="button" disabled={page >= Math.ceil(total / 12) || isLoading} onClick={() => setPage(page + 1)} className="rounded-full border border-gray-200 px-4 py-2 text-sm disabled:opacity-40">Next</button></nav>}{showBackToTop && (

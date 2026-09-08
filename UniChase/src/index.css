@@ -278,6 +278,99 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
 }
 
 @layer components {
+  .navbar-link {
+    position: relative;
+    padding-block: 0.5rem;
+  }
+
+  .navbar-link::after {
+    position: absolute;
+    right: 50%;
+    bottom: 0.1rem;
+    left: 50%;
+    height: 2px;
+    border-radius: 9999px;
+    background: var(--accent);
+    content: "";
+    opacity: 0;
+    transition: left 220ms cubic-bezier(0.22, 1, 0.36, 1), right 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease;
+  }
+
+  .navbar-link:hover::after,
+  .navbar-link--active::after {
+    right: 0;
+    left: 0;
+    opacity: 1;
+  }
+
+  .navbar-link--active,
+  .mobile-navbar-link--active {
+    color: var(--accent) !important;
+  }
+
+  .mobile-navbar-link {
+    border-left: 2px solid transparent;
+    padding: 0.45rem 0.75rem;
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+
+  .mobile-navbar-link--active {
+    border-left-color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 9%, transparent);
+  }
+
+  .theme-toggle-icon {
+    animation: theme-icon-enter 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .navbar-popover {
+    transform-origin: top right;
+    animation: navbar-popover-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mobile-menu-panel {
+    transform-origin: top;
+    animation: mobile-menu-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .route-progress {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .route-progress::after {
+    display: block;
+    width: 42%;
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent-hover));
+    content: "";
+    animation: route-progress-slide 900ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  .scroll-reveal--visible {
+    animation: scroll-reveal-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0s);
+  }
+
+  .hero-carousel-image {
+    animation: hero-image-settle 8s linear both;
+    will-change: transform;
+  }
+
+  .hero-carousel-content {
+    animation: hero-content-enter 460ms 100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .university-card-entry {
+    animation: university-card-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--card-index, 0) * 45ms);
+  }
+
   .university-card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
@@ -338,6 +431,30 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
     height: 100%;
     object-fit: cover;
     object-position: center;
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), filter 350ms ease;
+  }
+
+  .university-card-media::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(112deg, transparent 28%, rgba(255, 255, 255, 0.18) 48%, transparent 67%);
+    opacity: 0;
+    transform: translateX(-35%);
+    transition: opacity 300ms ease, transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .university-card-link:hover .university-card-media > img {
+      transform: scale(1.045);
+      filter: saturate(1.04);
+    }
+
+    .university-card-link:hover .university-card-media::after {
+      opacity: 1;
+      transform: translateX(35%);
+    }
   }
 
   .university-card-title {
@@ -435,11 +552,20 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
     background-color: rgba(255, 255, 255, 0.16);
     border: 1px solid rgba(255, 255, 255, 0.28);
     color: #FFFFFF;
+    animation: follow-button-pop 260ms cubic-bezier(0.22, 1, 0.36, 1);
 
   }
 
   .hero-carousel-arrow:hover {
     background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .hero-carousel-arrow svg {
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-carousel-arrow:hover svg {
+    transform: scale(1.14);
   }
 
   html[data-theme="dark"] .hero-carousel-arrow {
@@ -450,6 +576,11 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
 
   .hero-carousel-dot {
     background-color: rgba(255, 255, 255, 0.46);
+    transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), background-color 180ms ease, transform 180ms ease;
+  }
+
+  .hero-carousel-dot:hover {
+    transform: scaleY(1.35);
   }
 
   .hero-carousel-dot--active {
@@ -654,6 +785,102 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
       0 0 28px rgba(14, 148, 136, 0.2);
   }
   100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes theme-icon-enter {
+  from {
+    opacity: 0;
+    transform: rotate(-35deg) scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes navbar-popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mobile-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes follow-button-pop {
+  0% {
+    transform: scale(0.92);
+  }
+  55% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes route-progress-slide {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes scroll-reveal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-image-settle {
+  from {
+    transform: scale(1.045);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes hero-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes university-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
     transform: translateY(0) scale(1);
   }
 }

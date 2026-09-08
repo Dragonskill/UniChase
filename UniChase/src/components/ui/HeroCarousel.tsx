@@ -22,9 +22,19 @@ export default function HeroCarousel() {
 
   return <section aria-roledescription="carousel" aria-label="Featured UniChase stories" onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false) }} className="relative h-[360px] w-full overflow-hidden rounded-2xl shadow-lg sm:h-[480px] md:h-[560px]">
     <AnimatePresence mode="sync" initial={false}><motion.div key={slide.id} initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.48, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0">
-      <img src={slide.image} alt="" loading={current === 0 ? "eager" : "lazy"} fetchPriority={current === 0 ? "high" : "auto"} decoding="async" draggable={false} width="1400" height="788" className="h-full w-full object-cover" />
+      <img
+        src={slide.image}
+        alt=""
+        loading={current === 0 ? "eager" : "lazy"}
+        fetchPriority={current === 0 ? "high" : "auto"}
+        decoding="async"
+        draggable={false}
+        width="1400"
+        height="788"
+        className="hero-carousel-image h-full w-full object-cover"
+      />
       <div className="hero-carousel-overlay absolute inset-0" />
-      <motion.div initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : 0.12 }} className="absolute bottom-16 left-5 max-w-2xl pr-5 text-white sm:bottom-20 sm:left-12 sm:pr-8">
+      <motion.div initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.35, delay: reduceMotion ? 0 : 0.12 }} className="hero-carousel-content absolute bottom-16 left-5 max-w-2xl pr-5 text-white sm:bottom-20 sm:left-12 sm:pr-8">
         <span className="mb-3 inline-block rounded-full bg-teal px-3 py-1 text-xs font-semibold uppercase tracking-widest">{slide.category}</span>
         <h2 className="mb-5 mt-3 text-2xl font-bold leading-tight text-white drop-shadow-lg sm:text-3xl md:text-4xl">{slide.title}</h2>
         <Link to={slide.link} className="hero-carousel-cta inline-block rounded-xl bg-white px-5 py-2.5 font-semibold text-navy shadow-lg hover:bg-cream">Read More</Link>

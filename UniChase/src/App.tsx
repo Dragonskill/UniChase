@@ -40,7 +40,7 @@ export default function App() {
 
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 bg-surface p-3 text-teal">Skip to content</a>
 
-      {navigation.state !== 'idle' && <p role="status" className="fixed top-0 inset-x-0 z-50 bg-teal text-white text-center text-sm">Loading page…</p>}
+      {navigation.state !== 'idle' && <div role="status" aria-live="polite" className="route-progress fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden"><span className="sr-only">Loading page…</span></div>}
 
       <Navbar />
 

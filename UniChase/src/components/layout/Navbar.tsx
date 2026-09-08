@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Bell, Moon, Search, Sun } from 'lucide-react'
 import LoginDropdown from './LoginDropdown'
 import GlowLetters from '@/components/ui/GlowLetters'
@@ -118,7 +118,7 @@ export default function Navbar() {
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-cream text-muted hover:text-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
     >
-      {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+      {theme === 'dark' ? <Sun key="sun" className="theme-toggle-icon h-4 w-4" aria-hidden="true" /> : <Moon key="moon" className="theme-toggle-icon h-4 w-4" aria-hidden="true" />}
     </button>
   )
 
@@ -135,9 +135,9 @@ export default function Navbar() {
         {/* Desktop links */}
         <div className="hidden lg:flex items-center gap-4 xl:gap-6">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} className={`${l.to === '/match' ? 'hidden xl:inline' : ''} whitespace-nowrap text-sm font-medium text-muted hover:text-teal transition-colors`}>
+            <NavLink key={l.to} to={l.to} className={({ isActive }) => `${l.to === '/match' ? 'hidden xl:inline' : ''} navbar-link ${isActive ? 'navbar-link--active' : ''} whitespace-nowrap text-sm font-medium text-muted hover:text-teal transition-colors`}>
               {t(l.labelKey)}
-            </Link>
+            </NavLink>
           ))}
         </div>
 
@@ -145,7 +145,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <div className="relative hidden sm:block lg:hidden xl:block">
             <button type="button" onClick={() => setSearchOpen(!searchOpen)} aria-expanded={searchOpen} aria-controls="navbar-search" aria-label="Search universities" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-teal"><Search className="h-5 w-5" aria-hidden="true" /></button>
-            {searchOpen && <form id="navbar-search" onSubmit={search} className="absolute right-0 top-12 flex w-72 gap-2 rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
+            {searchOpen && <form id="navbar-search" onSubmit={search} className="navbar-popover absolute right-0 top-12 flex w-72 gap-2 rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
               <input type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities" placeholder={t('search')} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" />
               <button type="submit" className="rounded-lg bg-navy px-3 text-sm text-white">Go</button>
             </form>}
@@ -180,7 +180,7 @@ export default function Navbar() {
                 )}
               </button>
               {notificationOpen && (
-                <div className="absolute right-0 mt-3 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
+                <div className="navbar-popover absolute right-0 mt-3 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-navy">Notifications</p>
                     <button type="button" onClick={readAllNotifications} className="text-xs text-teal hover:underline">Mark all read</button>
@@ -226,11 +226,11 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div id="mobile-menu" className="lg:hidden max-h-[calc(100dvh-80px)] overflow-y-auto border-t border-gray-200 bg-surface px-5 py-4 flex flex-col gap-3">
+        <div id="mobile-menu" className="mobile-menu-panel lg:hidden max-h-[calc(100dvh-80px)] overflow-y-auto border-t border-gray-200 bg-surface px-5 py-4 flex flex-col gap-3">
           <form onSubmit={search} className="flex gap-2"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities" placeholder={t("search")} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" /><button className="rounded-lg bg-navy px-4 text-white">Go</button></form>{links.map((l) => (
-            <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)} className="text-sm font-medium text-ink hover:text-teal">
+            <NavLink key={l.to} to={l.to} onClick={() => setMenuOpen(false)} className={({ isActive }) => `mobile-navbar-link ${isActive ? 'mobile-navbar-link--active' : ''} text-sm font-medium text-ink hover:text-teal`}>
               {t(l.labelKey)}
-            </Link>
+            </NavLink>
           ))}
           <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="text-sm font-medium text-ink hover:text-teal">
             {t('dashboard')}
