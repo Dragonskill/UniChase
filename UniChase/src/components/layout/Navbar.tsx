@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Bell, Moon, Search, Sun } from 'lucide-react'
 import LoginDropdown from './LoginDropdown'
 import GlowLetters from '@/components/ui/GlowLetters'
+import { universities } from '@/data/universities'
 import { fetchNotifications, fetchUnreadNotificationCount, markAllNotificationsRead, type NotificationItem } from '@/lib/api'
 import { useI18n, type Language } from '@/lib/i18n'
 import { authChangeEvent, clearToken, getStoredUser, getToken } from '@/lib/storage'
 import { getStoredTheme, setStoredTheme, watchSystemTheme, themeChangeEvent, type ThemeMode } from '@/lib/theme'
+import { universitySearchScore } from '@/lib/universitySearch'
 
 const links = [
   { to: '/university', labelKey: 'university' },
@@ -15,6 +17,15 @@ const links = [
   { to: '/careers', labelKey: 'careers' },
   { to: '/community', labelKey: 'community' },
   { to: '/match', labelKey: 'match' },
+] as const
+
+const discoveryTools = [
+  { to: '/match', label: 'Best Match', detail: 'Personalized university suggestions' },
+  { to: '/compare', label: 'Compare', detail: 'Side-by-side university review' },
+  { to: '/roadmap', label: 'Roadmap', detail: 'Application task planning' },
+  { to: '/calendar', label: 'Calendar', detail: 'Deadlines and reminders' },
+  { to: '/visa-guide', label: 'Visa guide', detail: 'Visa preparation checklist' },
+  { to: '/cost-calculator', label: 'Cost calculator', detail: 'Estimate study and living costs' },
 ] as const
 
 function notificationPath(value?: string | null) {
@@ -34,6 +45,21 @@ export default function Navbar() {
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const quickSearchUniversities = useMemo(() => {
+    const value = query.trim()
+    if (!value) return universities.slice(0, 4)
+    return universities
+      .map((university) => ({ university, score: universitySearchScore(university, value) }))
+      .filter((result) => result.score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((result) => result.university)
+  }, [query])
+  const quickSearchTools = useMemo(() => {
+    const value = query.trim().toLowerCase()
+    if (!value) return discoveryTools.slice(0, 3)
+    return discoveryTools.filter((tool) => `${tool.label} ${tool.detail}`.toLowerCase().includes(value)).slice(0, 4)
+  }, [query])
 
   useEffect(() => {
     function syncAuth() {
@@ -90,12 +116,22 @@ export default function Navbar() {
     const dismiss = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { setMenuOpen(false); setSearchOpen(false); setNotificationOpen(false) }
     }
+    const shortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const isTyping = target?.matches('input, textarea, select, [contenteditable="true"]')
+      if (window.matchMedia('(min-width: 1280px)').matches && !isTyping && (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') || event.key === '/')) {
+        event.preventDefault()
+        setSearchOpen(true)
+        setNotificationOpen(false)
+      }
+    }
     const outside = (event: PointerEvent) => {
       if (!navRef.current?.contains(event.target as Node)) { setMenuOpen(false); setSearchOpen(false); setNotificationOpen(false) }
     }
     document.addEventListener('keydown', dismiss)
+    document.addEventListener('keydown', shortcut)
     document.addEventListener('pointerdown', outside)
-    return () => { document.removeEventListener('keydown', dismiss); document.removeEventListener('pointerdown', outside) }
+    return () => { document.removeEventListener('keydown', dismiss); document.removeEventListener('keydown', shortcut); document.removeEventListener('pointerdown', outside) }
   }, [])
 
   const search = (event: FormEvent) => {
@@ -144,10 +180,27 @@ export default function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           <div className="relative hidden sm:block lg:hidden xl:block">
-            <button type="button" onClick={() => setSearchOpen(!searchOpen)} aria-expanded={searchOpen} aria-controls="navbar-search" aria-label="Search universities" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-teal"><Search className="h-5 w-5" aria-hidden="true" /></button>
-            {searchOpen && <form id="navbar-search" onSubmit={search} className="navbar-popover absolute right-0 top-12 flex w-72 gap-2 rounded-xl border border-gray-200 bg-surface p-3 shadow-lg">
-              <input type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities" placeholder={t('search')} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" />
-              <button type="submit" className="rounded-lg bg-navy px-3 text-sm text-white">Go</button>
+            <button type="button" onClick={() => setSearchOpen(!searchOpen)} aria-expanded={searchOpen} aria-controls="navbar-search" aria-label="Quick search" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted hover:text-teal" title="Quick search (Ctrl K)"><Search className="h-5 w-5" aria-hidden="true" /></button>
+            {searchOpen && <form id="navbar-search" onSubmit={search} className="navbar-popover absolute right-0 top-12 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-surface p-3 shadow-lg">
+              <div className="flex gap-2">
+                <input type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search universities and tools" placeholder="Search universities and tools" className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-cream px-3 py-2 text-sm" />
+                <button type="submit" className="rounded-lg bg-navy px-3 text-sm font-semibold text-white">Search</button>
+              </div>
+              <div className="mt-3 max-h-80 space-y-3 overflow-y-auto">
+                {quickSearchUniversities.length > 0 && <div>
+                  <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted">Universities</p>
+                  {quickSearchUniversities.map((university) => <Link key={university.id} to={`/universities/${university.slug || university.id}`} onClick={() => setSearchOpen(false)} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-cream">
+                    <span className="min-w-0"><span className="block truncate text-sm font-semibold text-navy">{university.name}</span><span className="block text-xs text-muted">{university.location}</span></span>
+                    <span className="shrink-0 text-xs text-muted">QS {university.qsRanking}</span>
+                  </Link>)}
+                </div>}
+                {quickSearchTools.length > 0 && <div>
+                  <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted">Student tools</p>
+                  {quickSearchTools.map((tool) => <Link key={tool.to} to={tool.to} onClick={() => setSearchOpen(false)} className="block rounded-lg px-2 py-2 hover:bg-cream"><span className="block text-sm font-semibold text-navy">{tool.label}</span><span className="block text-xs text-muted">{tool.detail}</span></Link>)}
+                </div>}
+                {quickSearchUniversities.length === 0 && quickSearchTools.length === 0 && <p className="px-2 py-5 text-center text-sm text-muted">No quick results. Press Search to open the full university directory.</p>}
+              </div>
+              <p className="mt-2 border-t border-gray-100 px-2 pt-2 text-xs text-muted">Tip: press Ctrl/⌘ K or / to open quick search.</p>
             </form>}
           </div>
           <select

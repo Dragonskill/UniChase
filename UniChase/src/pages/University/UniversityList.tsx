@@ -7,12 +7,8 @@ import { fetchUniversityPage } from "@/lib/api"
 import {
   addRecentSearch,
   getRecentlyViewedUniversities,
-
   getRecentSearches,
-
-
-
-
+  setCompareUniversityIds,
 } from "@/lib/storage"
 import { applySeo } from "@/lib/seo"
 import { useUniversityState } from "@/lib/universityState"
@@ -123,6 +119,12 @@ function UniversityList() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const showBackToTopRef = useRef(false)
   const reduceMotion = useReducedMotion()
+  const comparedUniversities = useMemo(
+    () => compareIds
+      .map((id) => universityList.find((university) => university.id === id) || fallbackUniversities.find((university) => university.id === id))
+      .filter((university): university is University => Boolean(university)),
+    [compareIds, universityList],
+  )
 
   const queryFilters = useMemo(
     () => ({
@@ -469,10 +471,30 @@ function UniversityList() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
-          className="fixed bottom-5 right-5 z-40 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+          className={`fixed right-5 z-40 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white shadow-lg hover:bg-navy-light focus:outline-none focus-visible:ring-2 focus-visible:ring-teal ${compareIds.length ? "bottom-28 sm:bottom-24" : "bottom-5"}`}
         >
           Back to top
         </button>
+      )}
+      {compareIds.length > 0 && (
+        <aside aria-label="University comparison selection" aria-live="polite" className="compare-tray fixed inset-x-4 bottom-4 z-30 mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-surface p-3 shadow-xl sm:px-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-teal">Compare {compareIds.length} of 4</p>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                {comparedUniversities.map((university) => (
+                  <button key={university.id} type="button" onClick={() => handleCompare(university.id)} aria-label={`Remove ${university.name} from comparison`} className="shrink-0 rounded-full border border-gray-200 bg-cream px-3 py-1.5 text-xs font-medium text-navy hover:border-teal">
+                    {university.name} <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <button type="button" onClick={() => setCompareUniversityIds([])} className="text-sm text-muted hover:text-teal">Clear</button>
+              {compareIds.length >= 2 ? <Link to="/compare" className="rounded-full bg-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-light">Compare now</Link> : <span className="rounded-full bg-cream px-5 py-2.5 text-sm font-semibold text-muted">Select 1 more</span>}
+            </div>
+          </div>
+        </aside>
       )}
     </div>
   )
