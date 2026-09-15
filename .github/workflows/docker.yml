@@ -1,0 +1,71 @@
+name: Docker build and smoke test
+
+on:
+  push:
+    branches: [main, master, codex/production-readiness]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: UniChase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: UniChase/package-lock.json
+      - run: npm ci
+      - run: npm run lint && npm test
+      - name: Configure disposable integration stack
+        shell: bash
+        run: |
+          password=$(openssl rand -hex 32)
+          jwt=$(openssl rand -hex 32)
+          echo "::add-mask::$password"
+          echo "::add-mask::$jwt"
+          printf 'POSTGRES_PASSWORD=%s\nJWT_SECRET=%s\nSITE_ADDRESS=http://localhost\nPUBLIC_ORIGIN=http://localhost\n' "$password" "$jwt" > .env.production
+      - name: Build and start Docker stack
+        run: docker compose --env-file .env.production -f compose.production.yml up -d --build --wait --wait-timeout 180
+      - name: Seed and exercise frontend and API
+        run: |
+          docker compose --env-file .env.production -f compose.production.yml run --rm seed
+          node scripts/smoke-deployment.mjs http://localhost
+      - name: Publish tested images to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          REVISION: ${{ github.sha }}
+        shell: bash
+        run: |
+          prefix="ghcr.io/${REPOSITORY,,}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          for service in api web migrate; do
+            docker tag "unichase/$service:local" "$prefix/$service:$REVISION"
+            docker push "$prefix/$service:$REVISION"
+          done
+          docker logout ghcr.io
+          echo "Published tested images with revision tag $REVISION" >> "$GITHUB_STEP_SUMMARY"
+      - name: Diagnostic logs
+        if: failure()
+        run: docker compose --env-file .env.production -f compose.production.yml logs --tail=80
+      - name: Remove disposable integration stack
+        if: always()
+        run: docker compose --env-file .env.production -f compose.production.yml down -v

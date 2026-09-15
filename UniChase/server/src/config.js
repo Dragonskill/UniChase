@@ -35,6 +35,12 @@ export function getPort() {
   return port
 }
 
+export function getTrustProxyHops() {
+  const hops = Number(process.env.TRUST_PROXY_HOPS || 0)
+  if (!Number.isInteger(hops) || hops < 0 || hops > 1) throw new Error("TRUST_PROXY_HOPS must be 0 (direct) or 1 (one trusted reverse proxy)")
+  return hops
+}
+
 export function assertRequiredEnv() {
   const missing = []
 
@@ -46,7 +52,7 @@ export function assertRequiredEnv() {
     missing.push("JWT_SECRET")
   }
 
-  if (missing.length === 0) { getJwtSecret(); getPort(); getCorsOrigins() }
+  if (missing.length === 0) { getJwtSecret(); getPort(); getCorsOrigins(); getTrustProxyHops() }
 
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`)

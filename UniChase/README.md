@@ -32,7 +32,7 @@ The Vite development server proxies `/api` to `http://127.0.0.1:3001`. In a spli
 
 ## Local setup
 
-Requirements: Node.js 20 or newer and PostgreSQL.
+Requirements: Node.js 24 LTS and PostgreSQL.
 
 ```bash
 npm ci
@@ -133,6 +133,8 @@ Opening/exporting the calendar syncs dated applications, roadmaps, checklist ite
 PDFs contain UniChase branding and a creation date. Export runs in the browser and should be used only on a trusted device for private student records.
 
 ## SEO and deployment
+
+For the full application with HTTPS, API, and PostgreSQL on a Docker server, follow [Docker deployment](deploy/README.md). The production Compose stack provides migration ordering, persistent volumes, database readiness checks, and a private API/database network. The existing `docker-compose.yml` remains a local development database only.
 
 `npm run build` type-checks, creates split production assets, and runs the sitemap generator. Set `VITE_SITE_URL` to the exact public origin (for example, `https://your-domain.example/`) during the production build. If it is unset, the build removes a stale sitemap instead of publishing incorrect URLs and writes a conservative `robots.txt`.
 

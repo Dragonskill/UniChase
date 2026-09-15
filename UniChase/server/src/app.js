@@ -2,7 +2,7 @@ import cors from "cors"
 import express from "express"
 import rateLimit from "express-rate-limit"
 import helmet from "helmet"
-import { getCorsOrigins } from "./config.js"
+import { getCorsOrigins, getTrustProxyHops } from "./config.js"
 import { errorHandler, notFoundHandler } from "./errors.js"
 import { createAnalyticsRouter } from "./routes/analytics.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
@@ -24,6 +24,7 @@ export function createApp({ prisma }) {
   const app = express()
 
   app.disable("x-powered-by")
+  app.set("trust proxy", getTrustProxyHops())
   app.use(helmet())
   app.use(
     cors({
@@ -32,6 +33,18 @@ export function createApp({ prisma }) {
     }),
   )
   app.use(express.json({ limit: "1mb" }))
+  app.get("/api/health", (req, res) => {
+    res.set("Cache-Control", "no-store").json({ data: { status: "ok" } })
+  })
+  app.get("/api/ready", async (req, res) => {
+    res.set("Cache-Control", "no-store")
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      res.json({ data: { status: "ready" } })
+    } catch {
+      res.status(503).json({ error: { message: "Service temporarily unavailable" } })
+    }
+  })
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -40,10 +53,6 @@ export function createApp({ prisma }) {
       legacyHeaders: false,
     }),
   )
-
-  app.get("/api/health", (req, res) => {
-    res.json({ data: { status: "ok" } })
-  })
 
   app.use("/api/universities", createUniversityRouter(prisma))
   app.use("/api/student-councils", createStudentCouncilRouter(prisma))
