@@ -134,6 +134,8 @@ PDFs contain UniChase branding and a creation date. Export runs in the browser a
 
 ## SEO and deployment
 
+The public review site is deployed independently through `.github/workflows/pages.yml` to GitHub Pages. Its build uses `VITE_BASE_PATH=/UniChase/` and `VITE_GITHUB_PAGES=true` for project-path assets and refresh-safe hash routing. No ChatGPT hosting configuration is required. GitHub Pages serves the frontend only; without an explicit `VITE_API_BASE_URL`, catalog fallbacks and local question drafts work, while account and live community services are unavailable. Do not claim a draft was sent to an advisor. KUUSA names, photos, social URLs, and memberships must be confirmed before publication; the supplied design's example identities and counts are not production data.
+
 For the full application with HTTPS, API, and PostgreSQL on a Docker server, follow [Docker deployment](deploy/README.md). The production Compose stack provides migration ordering, persistent volumes, database readiness checks, and a private API/database network. The existing `docker-compose.yml` remains a local development database only.
 
 `npm run build` type-checks, creates split production assets, and runs the sitemap generator. Set `VITE_SITE_URL` to the exact public origin (for example, `https://your-domain.example/`) during the production build. If it is unset, the build removes a stale sitemap instead of publishing incorrect URLs and writes a conservative `robots.txt`.

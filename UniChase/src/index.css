@@ -936,6 +936,15 @@ html[data-theme="dark"] :where(button, a[href], input, select, textarea):focus-v
   }
 }
 
+.community-intro { background-image: radial-gradient(ellipse at top right, #14a39a12, transparent 65%); }
+.community-portrait { background: linear-gradient(135deg, #14a39a18, #94a3b818); }
+.community-rail { scrollbar-width: thin; scrollbar-color: #94a3b8 transparent; }
+.community-rail:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+.community-person { transition: border-color 180ms ease; }
+.community-person:hover { border-color: var(--accent); }
+.community-dialog { margin: auto; }
+.community-dialog::backdrop { background: #0f234280; backdrop-filter: blur(4px); }
+
 
 /* Preserve card hit areas while keeping interactive controls outside links. */
 .university-card-main-link::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; }

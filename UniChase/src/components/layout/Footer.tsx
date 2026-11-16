@@ -14,31 +14,27 @@ export default function Footer() {
               <GlowLetters text="Uni" variant="brand" className="text-white" />
               <GlowLetters text="Chase" variant="brand" className="text-teal" />
             </Link>
-            <p className="text-sm text-gray-400 mt-3 max-w-xs">Helping international students navigate study, careers and life in Korea.</p>
+            <p className="text-sm text-gray-400 mt-3 max-w-xs">Find your university, meet your community, and build your next chapter in Korea.</p>
           </div>
           <div className="flex gap-12">
             <div className="flex flex-col gap-2">
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">About</Link>
+              <Link to="/university" className="text-sm text-gray-300 hover:text-teal">Universities</Link>
               <Link to="/contact" className="text-sm text-gray-300 hover:text-teal">{t('contact')}</Link>
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">Advertising</Link>
+              <Link to="/community" className="text-sm text-gray-300 hover:text-teal">Community</Link>
             </div>
             <div className="flex flex-col gap-2">
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">Terms</Link>
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">Privacy</Link>
-              <Link to="/" className="text-sm text-gray-300 hover:text-teal">Newsletter</Link>
+              <Link to="/match" className="text-sm text-gray-300 hover:text-teal">Best Match</Link>
+              <Link to="/faq" className="text-sm text-gray-300 hover:text-teal">Student FAQ</Link>
+              <Link to="/cost-calculator" className="text-sm text-gray-300 hover:text-teal">Cost calculator</Link>
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold mb-3">unichase@contact.com</p>
-            <div className="flex gap-3">
-              {['ig', 'yt', 'tk'].map((s) => (
-                <a key={s} href="#" className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-sm hover:bg-teal transition-colors">{s}</a>
-              ))}
-            </div>
+            <p className="text-sm font-semibold mb-3">Make yourself at home.</p>
+            <Link to="/universities/korea-university#student-community" className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm hover:border-teal hover:text-teal">Explore KUUSA →</Link>
           </div>
         </div>
         <div className="border-t border-white/10 pt-6 text-center">
-          <p className="text-xs text-gray-400">© 2026 UniChase. All rights reserved.</p>
+          <p className="text-xs text-gray-400">© {new Date().getFullYear()} UniChase. All rights reserved.</p>
         </div>
       </div>
     </footer>

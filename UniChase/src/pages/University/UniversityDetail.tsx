@@ -1,16 +1,17 @@
+import StudentCommunity from "@/components/sections/StudentCommunity"
 import { useEffect, useState, type CSSProperties } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { useParams, Link } from "react-router-dom"
-import { universities as fallbackUniversities, type StudentCouncilRole, type University } from "@/data/universities"
+import { universities as fallbackUniversities, type University } from "@/data/universities"
 import UniversityImage from "@/components/ui/UniversityImage"
 import { createApplication, fetchUniversity, fetchUniversityPrograms, fetchUniversityReviews, saveDeadlineToAccount, submitUniversityReview, type Program, type UniversityReview } from "@/lib/api"
 import { applySeo } from "@/lib/seo"
 import { addRecentlyViewedUniversity, getToken, saveLocalDeadline } from "@/lib/storage"
 import { useUniversityState } from "@/lib/universityState"
-import { formatUniversityDate as formatDate, verificationLabel, universityVerification } from "@/lib/universityDisplay"
+import { formatUniversityDate as formatDate, universityVerification } from "@/lib/universityDisplay"
 
 function infoList(values?: string[]) { return values?.length ? values : ["Not verified. Check the official university guide."] }
-function roleTitle(role: StudentCouncilRole) { return role.displayName ? `${role.roleTitle} - ${role.displayName}` : role.roleTitle }
+
 
 export default function UniversityDetail() {
   const { id, idOrSlug } = useParams()
@@ -304,44 +305,7 @@ export default function UniversityDetail() {
           )}
         </section>
 
-        <section className="bg-surface rounded-2xl shadow-sm p-5 md:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-lg font-bold text-navy">Student Council</h2>
-              <p className="text-sm text-muted">{uni.studentCouncil?.name || "Student council information is being verified."}</p>
-            </div>
-            <span className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-gray-700">
-              {verificationLabel(uni.studentCouncil?.verificationStatus)}
-            </span>
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {uni.studentCouncil?.description || "No verified student council profile is available yet."}
-          </p>
-          {(uni.studentCouncil?.websiteUrl || uni.studentCouncil?.socialUrl || uni.studentCouncil?.contactEmail) && (
-            <div className="mt-4 flex flex-wrap gap-3 text-sm">
-              {uni.studentCouncil.websiteUrl && <a href={uni.studentCouncil.websiteUrl} target="_blank" rel="noreferrer" className="text-teal hover:underline">Council website</a>}
-              {uni.studentCouncil.socialUrl && <a href={uni.studentCouncil.socialUrl} target="_blank" rel="noreferrer" className="text-teal hover:underline">Social link</a>}
-              {uni.studentCouncil.contactEmail && <span className="text-gray-700">Email: <strong>{uni.studentCouncil.contactEmail}</strong></span>}
-            </div>
-          )}
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {(uni.studentCouncil?.roles || []).map((role) => (
-              <div key={role.id} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-navy">{roleTitle(role)}</h3>
-                  <span className="text-xs bg-cream border border-gray-200 rounded-full px-3 py-1 text-gray-700">{verificationLabel(role.verificationStatus)}</span>
-                </div>
-                {role.department && <p className="text-xs text-muted mt-1">{role.department}</p>}
-                <p className="text-sm text-gray-700 mt-2">{role.description || "Role details need verification."}</p>
-                {role.responsibilities && role.responsibilities.length > 0 && (
-                  <ul className="mt-3 space-y-1 text-sm text-gray-700">
-                    {role.responsibilities.map((item) => <li key={item}>{item}</li>)}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+        <StudentCommunity key={uni.id} university={uni} />
 
         <section className="bg-surface rounded-2xl shadow-sm p-5 md:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-4">

@@ -1,9 +1,10 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, createHashRouter } from 'react-router-dom'
 import App from '../App'
 import { Link } from 'react-router-dom'
 import Home from '../pages/Home'
 
-const router = createBrowserRouter([
+const createRouter = import.meta.env.VITE_GITHUB_PAGES === 'true' ? createHashRouter : createBrowserRouter
+const router = createRouter([
   {
     path: '/',
     element: <App />,
