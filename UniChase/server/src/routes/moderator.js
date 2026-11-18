@@ -1,4 +1,5 @@
 import { Router } from "express"
+import { createModeratorAssociationRouter } from "./associations.js"
 import { requireAdmin } from "../auth.js"
 import { ApiError, asyncHandler, isPrismaMissingRecord } from "../errors.js"
 import {
@@ -46,6 +47,7 @@ export function createModeratorRouter(prisma) {
   const router = Router()
 
   router.use(requireAdmin(prisma))
+  router.use("/associations", createModeratorAssociationRouter(prisma))
 
   router.post(
     "/universities",

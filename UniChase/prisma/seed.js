@@ -529,34 +529,24 @@ async function seedAdminUser() {
 }
 
 async function seedCouncil(university) {
+  const isKuusa = university.slug === "korea-university"
   const council = await prisma.studentCouncil.upsert({
     where: { universityId: university.id },
-    update: {
-      name: `${university.name} Student Council`,
-      officialName: null,
-      description:
-        "Student council structure placeholder. Real members are not listed until verified from official public sources or added by a moderator.",
-      websiteUrl: null,
-      socialUrl: null,
-      contactEmail: null,
-      sourceUrl: university.officialWebsite,
-      verificationStatus: needsVerification,
-      lastVerifiedAt: null,
-    },
+    update: {},
     create: {
       universityId: university.id,
-      name: `${university.name} Student Council`,
-      officialName: null,
-      description:
-        "Student council structure placeholder. Real members are not listed until verified from official public sources or added by a moderator.",
-      websiteUrl: null,
-      socialUrl: null,
-      contactEmail: null,
-      sourceUrl: university.officialWebsite,
+      name: isKuusa ? "KUUSA" : `${university.name} Student Council`,
+      officialName: isKuusa ? "Korea University Uzbek Students Association" : null,
+      description: isKuusa
+        ? "KUUSA is the Korea University Uzbek Students Association. It represents Uzbek students at Korea University."
+        : "Student council structure placeholder. Real members are not listed until verified from official public sources or added by a moderator.",
+      associationEnabled: isKuusa,
+      sourceUrl: isKuusa ? null : university.officialWebsite,
       verificationStatus: needsVerification,
-      lastVerifiedAt: null,
     },
   })
+
+  if (isKuusa || council.associationEnabled) return
 
   for (const role of placeholderCouncilRoles) {
     const existing = await prisma.studentCouncilRole.findFirst({
@@ -568,28 +558,20 @@ async function seedCouncil(university) {
       },
     })
 
-    const data = {
-      councilId: council.id,
-      universityId: university.id,
-      adminUserId: null,
-      displayName: null,
-      roleTitle: role.roleTitle,
-      department: null,
-      description: "Role placeholder only. No real student name has been verified.",
-      responsibilities: role.responsibilities,
-      contactEmail: null,
-      contactUrl: null,
-      avatarUrl: null,
-      status: "pending",
-      verificationStatus: needsVerification,
-      sourceUrl: university.officialWebsite,
-    }
+    if (existing) continue
 
-    if (existing) {
-      await prisma.studentCouncilRole.update({ where: { id: existing.id }, data })
-    } else {
-      await prisma.studentCouncilRole.create({ data })
-    }
+    await prisma.studentCouncilRole.create({
+      data: {
+        councilId: council.id,
+        universityId: university.id,
+        roleTitle: role.roleTitle,
+        description: "Role placeholder only. No real student name has been verified.",
+        responsibilities: role.responsibilities,
+        status: "pending",
+        verificationStatus: needsVerification,
+        sourceUrl: university.officialWebsite,
+      },
+    })
   }
 }
 
@@ -636,8 +618,7 @@ async function main() {
   console.log(`Inserted universities: ${inserted}`)
   console.log(`Updated universities: ${updated}`)
   console.log(`QS 2026 South Korea top-1000 universities seeded: ${universities.length}`)
-  console.log(`Student council placeholders seeded: ${universities.length}`)
-  console.log(`Placeholder roles per council: ${placeholderCouncilRoles.length}`)
+  console.log("KUUSA and legacy student councils initialized. Existing council profiles and roles were preserved.")
   console.log(`Sources: ${qsSourceUrl}, ${koreaRankingSourceUrl}`)
   console.log("No real student council people were invented.")
 }

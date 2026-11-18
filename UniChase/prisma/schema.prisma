@@ -74,54 +74,160 @@ model University {
 }
 
 model StudentCouncil {
-  id                 Int                  @id @default(autoincrement())
-  universityId       Int                  @unique
+  id                 Int       @id @default(autoincrement())
+  universityId       Int       @unique
   name               String
   officialName       String?
-  description        String               @db.Text
+  description        String    @db.Text
   websiteUrl         String?
   socialUrl          String?
   contactEmail       String?
   sourceUrl          String?
-  verificationStatus String               @default("needs verification")
+  verificationStatus String    @default("needs verification")
   lastVerifiedAt     DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  associationEnabled Boolean   @default(false)
+  logoUrl            String?
+  imageId            String?
+  foundedYear        Int?
+  memberCount        Int?
+  telegramUrl        String?
+  instagramUrl       String?
+  linkedinUrl        String?
 
-  university         University           @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  roles              StudentCouncilRole[]
+  university University           @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  roles      StudentCouncilRole[]
+  advisors   MajorAdvisor[]
+  content    AssociationContent[]
+  questions  AdvisorQuestion[]
+  image      AssociationImage?    @relation(fields: [imageId], references: [id], onDelete: SetNull)
 
   @@index([verificationStatus])
+  @@index([imageId])
 }
 
 model StudentCouncilRole {
-  id                 Int            @id @default(autoincrement())
+  id                 Int      @id @default(autoincrement())
   councilId          Int
   universityId       Int
   adminUserId        Int?
   displayName        String?
   roleTitle          String
   department         String?
-  description        String?        @db.Text
-  responsibilities   String[]       @default([])
+  description        String?  @db.Text
+  responsibilities   String[] @default([])
   contactEmail       String?
   contactUrl         String?
   avatarUrl          String?
-  status             String         @default("pending")
-  verificationStatus String         @default("needs verification")
+  status             String   @default("pending")
+  verificationStatus String   @default("needs verification")
   sourceUrl          String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  imageId            String?
+  roleShort          String?
+  major              String?
+  academicYear       String?
+  telegramUrl        String?
+  instagramUrl       String?
+  linkedinUrl        String?
+  displayOrder       Int      @default(0)
 
-  council            StudentCouncil @relation(fields: [councilId], references: [id], onDelete: Cascade)
-  university         University     @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  adminUser          AdminUser?     @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  council    StudentCouncil    @relation(fields: [councilId], references: [id], onDelete: Cascade)
+  university University        @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  adminUser  AdminUser?        @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  image      AssociationImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
 
   @@index([councilId])
   @@index([universityId])
   @@index([adminUserId])
   @@index([status])
   @@index([verificationStatus])
+  @@index([imageId])
+  @@index([councilId, status, displayOrder])
+}
+
+model AssociationImage {
+  id          String               @id @default(uuid())
+  contentType String
+  bytes       Bytes
+  createdAt   DateTime             @default(now())
+  councils    StudentCouncil[]
+  members     StudentCouncilRole[]
+  advisors    MajorAdvisor[]
+  content     AssociationContent[]
+}
+
+model MajorAdvisor {
+  id                 Int               @id @default(autoincrement())
+  councilId          Int
+  name               String
+  major              String
+  academicYear       String?
+  contactUrl         String?
+  photoUrl           String?
+  imageId            String?
+  active             Boolean           @default(false)
+  verificationStatus String            @default("needs verification")
+  displayOrder       Int               @default(0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  council            StudentCouncil    @relation(fields: [councilId], references: [id], onDelete: Cascade)
+  image              AssociationImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  questions          AdvisorQuestion[]
+
+  @@index([councilId, active, displayOrder])
+  @@index([imageId])
+}
+
+enum AssociationContentType {
+  EVENT
+  POST
+  INTERVIEW
+}
+
+model AssociationContent {
+  id          Int                    @id @default(autoincrement())
+  councilId   Int
+  type        AssociationContentType
+  title       String
+  description String                 @db.Text
+  body        String?                @db.Text
+  imageUrl    String?
+  imageId     String?
+  date        DateTime               @db.Date
+  externalUrl String?
+  published   Boolean                @default(false)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  council     StudentCouncil         @relation(fields: [councilId], references: [id], onDelete: Cascade)
+  image       AssociationImage?      @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([councilId, published, date])
+  @@index([imageId])
+}
+
+model AdvisorQuestion {
+  id              Int             @id @default(autoincrement())
+  studentId       Int?
+  councilId       Int?
+  advisorId       Int?
+  advisorName     String
+  advisorMajor    String
+  associationName String
+  universityName  String
+  body            String          @db.Text
+  handledAt       DateTime?
+  createdAt       DateTime        @default(now())
+  student         StudentUser?    @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  council         StudentCouncil? @relation(fields: [councilId], references: [id], onDelete: SetNull)
+  advisor         MajorAdvisor?   @relation(fields: [advisorId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([councilId])
+  @@index([advisorId])
+  @@index([handledAt, createdAt])
 }
 
 model AdminUser {
@@ -167,6 +273,7 @@ model StudentUser {
   deadlineReminders         UserDeadline[]
   checklistItems            ChecklistItem[]
   recommendationPreferences RecommendationPreference[]
+  advisorQuestions           AdvisorQuestion[]
 }
 
 model SavedUniversity {

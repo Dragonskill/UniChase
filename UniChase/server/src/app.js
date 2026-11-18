@@ -6,6 +6,7 @@ import { getCorsOrigins } from "./config.js"
 import { errorHandler, notFoundHandler } from "./errors.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
 import { createAuthRouter } from "./routes/auth.js"
+import { createAssociationRouter } from "./routes/associations.js"
 import { createContactRouter } from "./routes/contact.js"
 import { createModeratorRouter } from "./routes/moderator.js"
 import { createStudentCouncilRouter } from "./routes/studentCouncils.js"
@@ -39,6 +40,7 @@ export function createApp({ prisma }) {
   })
 
   app.use("/api/universities", createUniversityRouter(prisma))
+  app.use("/api/associations", createAssociationRouter(prisma))
   app.use("/api/student-councils", createStudentCouncilRouter(prisma))
   app.use("/api/auth", createStudentAuthRouter(prisma))
   app.use("/api/user", createUserRouter(prisma))
