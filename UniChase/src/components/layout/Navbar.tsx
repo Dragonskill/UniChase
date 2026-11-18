@@ -128,7 +128,7 @@ export default function Navbar() {
           {/* Auth - desktop */}
           <div className="hidden md:block"><LoginDropdown /></div>
           <Link to="/dashboard" className="hidden lg:inline text-sm font-medium text-muted hover:text-teal transition-colors">{t('dashboard')}</Link>
-          {!signedIn && <Link to="/signup" className="hidden md:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>}
+          {!signedIn && <Link to="/signup" className="animated-button-link hidden md:inline text-sm font-semibold px-5 py-2 bg-navy text-white rounded-full hover:bg-navy-light transition-colors">{t('signup')}</Link>}
 
           {/* Hamburger - mobile */}
           <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-navy" aria-label="Menu">
@@ -164,8 +164,8 @@ export default function Navbar() {
           <div className="sm:hidden">{themeToggle}</div>
           {!signedIn && (
             <div className="flex gap-3 pt-3 border-t border-gray-100">
-              <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-full">{t('login')}</Link>
-              <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex-1 text-center text-sm font-semibold py-2 bg-navy text-white rounded-full">{t('signup')}</Link>
+              <Link to="/login" onClick={() => setMenuOpen(false)} className="animated-button-link flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-full">{t('login')}</Link>
+              <Link to="/signup" onClick={() => setMenuOpen(false)} className="animated-button-link flex-1 text-center text-sm font-semibold py-2 bg-navy text-white rounded-full">{t('signup')}</Link>
             </div>
           )}
         </div>

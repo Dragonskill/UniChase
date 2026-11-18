@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { motion, useReducedMotion } from "framer-motion"
 import { Link, useSearchParams } from "react-router-dom"
 import { universities as fallbackUniversities, type University } from "@/data/universities"
 import UniversityCard from "@/components/ui/UniversityCard"
@@ -131,7 +130,6 @@ function UniversityList() {
   const [recentlyViewed, setRecentlyViewed] = useState(() => getRecentlyViewedUniversities())
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const reduceMotion = useReducedMotion()
 
   const queryFilters = useMemo(
     () => ({
@@ -410,13 +408,9 @@ function UniversityList() {
         )}
       </form>
 
-      <motion.div
-        key={`${isLoading}-${universityList.length}`}
+      <div
         aria-busy={isLoading}
-        initial={reduceMotion || isLoading ? false : { opacity: 0.85 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-        className="card-pop university-card-grid"
+        className="university-card-grid"
       >
         {isLoading &&
           Array.from({ length: 6 }).map((_, index) => (
@@ -462,7 +456,7 @@ function UniversityList() {
             onToggleCompare={handleCompare}
           />
         ))}
-      </motion.div>
+      </div>
       {showBackToTop && (
         <button
           type="button"

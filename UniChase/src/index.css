@@ -133,7 +133,6 @@ html[data-theme="dark"] textarea::placeholder {
   @media (hover: hover) and (pointer: fine) {
     .university-card-link:hover {
       box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
-      transform: translateY(-0.25rem);
     }
 
     html[data-theme="dark"] .university-card-link:hover {
@@ -141,15 +140,21 @@ html[data-theme="dark"] textarea::placeholder {
     }
   }
 
-  .university-card-link:active:not(:has(button:active)),
-  .clickable-card:active {
-    transform: scale(0.99);
-    transition-duration: 90ms;
-  }
+  @media (prefers-reduced-motion: no-preference) {
+    @media (hover: hover) and (pointer: fine) {
+      .university-card-link:hover {
+        transform: translateY(-4px);
+      }
 
-  @media (hover: hover) and (pointer: fine) {
-    .clickable-card:hover:not(:active) {
-      transform: translateY(-2px);
+      .clickable-card:hover {
+        transform: translateY(-3px);
+      }
+    }
+
+    .university-card-link:active:not(:has(button:active)),
+    .clickable-card:active {
+      transform: scale(0.988);
+      transition-duration: 85ms;
     }
   }
 
@@ -279,28 +284,22 @@ html[data-theme="dark"] textarea::placeholder {
     transition-property: color, background-color, border-color, opacity, text-decoration-color, box-shadow, transform;
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    :where(button:not(:disabled), .animated-button-link):hover {
-      transform: translateY(-1px) scale(1.01);
-    }
-
-    :where(a[href][class*="shadow"]:not(.animated-button-link, .clickable-card, [class*="-translate-y"])):hover {
-      transform: translateY(-2px);
-    }
-  }
-
-  :where(button:not(:disabled), .animated-button-link):active {
-    transform: scale(0.975);
-    transition-duration: 90ms;
-  }
-
   :where(a[href]):active:not(:has(button:active)) {
     opacity: 0.92;
     transition-duration: 90ms;
   }
 
-  :where(a[href][class*="shadow"]:not(.animated-button-link, .clickable-card)):active {
-    transform: translateY(0) scale(0.99);
+  @media (prefers-reduced-motion: no-preference) {
+    @media (hover: hover) and (pointer: fine) {
+      :where(button:not(:disabled), .animated-button-link):hover {
+        scale: 1.02;
+      }
+    }
+
+    :where(button:not(:disabled), .animated-button-link):active {
+      scale: 0.97;
+      transition-duration: 85ms;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -313,10 +312,6 @@ html[data-theme="dark"] textarea::placeholder {
       transition-duration: 0.01ms !important;
     }
 
-    :where(button, a[href]) {
-      transform: none !important;
-    }
-
     .glow-letter {
       animation: none !important;
       transform: none !important;
@@ -325,7 +320,7 @@ html[data-theme="dark"] textarea::placeholder {
 }
 
 :is(button:not(:disabled), .animated-button-link) {
-  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform, scale;
 }
 
 .clickable-card {
@@ -333,14 +328,24 @@ html[data-theme="dark"] textarea::placeholder {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .data-result-enter {
-    animation: data-result-enter 160ms ease-out;
+  .data-result-enter,
+  .university-card-grid > .university-card-link:nth-child(-n + 6) {
+    animation: data-result-enter 210ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+
+  .university-card-grid > .university-card-link:nth-child(n + 3):nth-child(-n + 4) {
+    animation-delay: 24ms;
+  }
+
+  .university-card-grid > .university-card-link:nth-child(n + 5):nth-child(-n + 6) {
+    animation-delay: 48ms;
   }
 }
 
 @keyframes data-result-enter {
   from {
-    opacity: 0.85;
+    opacity: 0.62;
+    translate: 0 5px;
   }
 }
 
