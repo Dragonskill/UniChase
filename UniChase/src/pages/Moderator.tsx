@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Loader2, LogOut, RotateCcw, Save, Trash2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
 import GlowLetters from '@/components/ui/GlowLetters'
+import AssociationManager from '@/components/association/AssociationManager'
 import type { ForumPost, QAPost } from '@/data/community'
 import type { NewsArticle } from '@/data/news'
 import type { StudentCouncil, StudentCouncilRole, University } from '@/data/universities'
@@ -46,7 +47,7 @@ import {
   setModeratorSession,
 } from '@/lib/moderatorAuth'
 
-type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils'
+type ModeratorTab = 'news' | 'forum' | 'qa' | 'members' | 'student-councils' | 'associations'
 
 const tabs: { id: ModeratorTab; label: string }[] = [
   { id: 'news', label: 'News' },
@@ -54,6 +55,7 @@ const tabs: { id: ModeratorTab; label: string }[] = [
   { id: 'qa', label: 'Q&A' },
   { id: 'members', label: 'Society Members' },
   { id: 'student-councils', label: 'Student Councils' },
+  { id: 'associations', label: 'Associations' },
 ]
 
 const inputClass = 'w-full bg-cream border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal'
@@ -543,6 +545,8 @@ export default function Moderator() {
           }} />
         </ContentEditor>
       )}
+
+      {tab === 'associations' && <AssociationManager token={session.token} universities={universities} />}
 
       {tab === 'student-councils' && (
         <StudentCouncilManager

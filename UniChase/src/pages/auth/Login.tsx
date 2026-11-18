@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import PasswordInput from '@/components/auth/PasswordInput'
@@ -19,6 +19,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function Login() {
   const navigate = useNavigate()
+  const { state } = useLocation()
   const [formError, setFormError] = useState('')
   const {
     register,
@@ -33,7 +34,9 @@ export default function Login() {
       const response = await loginStudentAccount(data)
       setToken(response.token)
       setStoredUser(response.user)
-      navigate('/dashboard', { replace: true })
+      const returnTo = state?.associationReturn
+      const universityPath = typeof returnTo === 'string' && /^\/(university|universities)\/[a-z0-9-]+$/i.test(returnTo)
+      navigate(universityPath ? returnTo : '/dashboard', { replace: true })
     } catch (error) {
       setFormError(getAuthErrorMessage(error))
     }

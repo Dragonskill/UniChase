@@ -11,7 +11,6 @@ const links = [
   { to: '/university', labelKey: 'university' },
   { to: '/reviews', labelKey: 'reviews' },
   { to: '/news', labelKey: 'news' },
-  { to: '/careers', labelKey: 'careers' },
   { to: '/community', labelKey: 'community' },
   { to: '/match', labelKey: 'match' },
 ] as const
