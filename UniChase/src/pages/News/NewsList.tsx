@@ -19,7 +19,7 @@ export default function NewsList() {
     <div className="max-w-5xl mx-auto px-5 sm:px-6 py-10">
       <GlowLetters as="h1" text="News" variant="title" className="text-3xl font-bold text-navy mb-8" />
 
-      <Link to={`/news/${featured.id}`} className="group block mb-10">
+      <Link to={`/news/${featured.id}`} className="clickable-card group block mb-10">
         <div className="relative w-full h-72 sm:h-80 rounded-2xl overflow-hidden mb-4">
           <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/30 to-transparent" />
@@ -33,7 +33,7 @@ export default function NewsList() {
 
       <div className="flex flex-col divide-y divide-gray-100">
         {items.map((item) => (
-          <Link key={item.id} to={`/news/${item.id}`} className="group flex gap-4 sm:gap-5 py-5 hover:opacity-90 transition-opacity">
+          <Link key={item.id} to={`/news/${item.id}`} className="clickable-card group flex gap-4 sm:gap-5 py-5 hover:opacity-90">
             <div className="w-28 sm:w-32 h-20 sm:h-24 rounded-xl overflow-hidden flex-shrink-0">
               <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>

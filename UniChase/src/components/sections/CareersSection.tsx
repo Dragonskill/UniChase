@@ -12,7 +12,7 @@ export default function CareersSection() {
 
       <div className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
         {careers.slice(0, 5).map((job) => (
-          <Link key={job.id} to={`/careers/${job.id}`} className="flex items-center gap-4 p-4 hover:bg-cream transition-colors first:rounded-t-2xl last:rounded-b-2xl">
+          <Link key={job.id} to={`/careers/${job.id}`} className="clickable-card flex items-center gap-4 p-4 hover:bg-cream first:rounded-t-2xl last:rounded-b-2xl">
             <img src={job.logo} alt={job.company} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

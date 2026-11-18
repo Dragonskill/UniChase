@@ -182,7 +182,7 @@ function UniversityDetail() {
   return (
     <motion.div
       key={`${uni.id}-${isBackendLoaded ? "loaded" : "fallback"}`}
-      initial={reduceMotion ? false : { opacity: 0.94 }}
+      initial={reduceMotion ? false : { opacity: 0.75 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       className="page-fade max-w-6xl mx-auto px-6 py-8"

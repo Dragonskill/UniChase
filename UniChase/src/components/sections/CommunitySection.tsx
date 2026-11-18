@@ -14,7 +14,7 @@ export default function CommunitySection() {
 
       <div className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
         {forumPosts.slice(0, 5).map((post) => (
-          <Link key={post.id} to={`/community/${post.id}`} className="flex items-center gap-3 p-4 hover:bg-cream transition-colors">
+          <Link key={post.id} to={`/community/${post.id}`} className="clickable-card flex items-center gap-3 p-4 hover:bg-cream">
             <span className="text-xs bg-cream-dark text-ink px-2 py-0.5 rounded flex-shrink-0">{post.tag}</span>
             <p className="text-sm text-ink flex-1 truncate">{post.title}</p>
             {post.isNew && <span className="text-xs text-teal font-semibold flex-shrink-0">NEW</span>}

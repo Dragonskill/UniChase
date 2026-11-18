@@ -65,7 +65,7 @@ export default function Match() {
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         {results.map((result) => (
-          <Link key={result.university.id} to={`/universities/${result.university.slug || result.university.id}`} className="bg-surface rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow">
+          <Link key={result.university.id} to={`/universities/${result.university.slug || result.university.id}`} className="clickable-card data-result-enter bg-surface rounded-2xl shadow-sm p-5 hover:shadow-md">
             <div className="flex items-center gap-3">
               <img src={result.university.logo} alt={`${result.university.name} logo`} className="h-10 w-10 object-contain" />
               <div>

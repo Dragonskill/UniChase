@@ -15,7 +15,7 @@ export default function ReviewsSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
         {/* Featured */}
-        <Link to={`/reviews/${featured.id}`} className="group block bg-surface rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <Link to={`/reviews/${featured.id}`} className="clickable-card group block bg-surface rounded-2xl overflow-hidden shadow-sm hover:shadow-md">
           <div className="h-56 sm:h-64 overflow-hidden">
             <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
@@ -30,7 +30,7 @@ export default function ReviewsSection() {
         {/* List */}
         <div className="flex flex-col gap-3">
           {rest.map((r) => (
-            <Link key={r.id} to={`/reviews/${r.id}`} className="group flex gap-4 bg-surface rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+            <Link key={r.id} to={`/reviews/${r.id}`} className="clickable-card group flex gap-4 bg-surface rounded-xl p-3 shadow-sm hover:shadow-md">
               <img src={r.image} alt={r.title} className="w-24 h-20 object-cover rounded-lg flex-shrink-0" />
               <div className="flex flex-col justify-center min-w-0">
                 <p className="text-xs text-muted mb-1">{r.category} · {r.readTime}</p>
