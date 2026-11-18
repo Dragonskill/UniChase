@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import HeroCarousel from '@/components/ui/HeroCarousel'
 import ReviewsSection from '@/components/sections/ReviewsSection'
 import NewsSection from '@/components/sections/NewsSection'
-import CareersSection from '@/components/sections/CareersSection'
 import CommunitySection from '@/components/sections/CommunitySection'
 import NewsletterBanner from '@/components/sections/NewsletterBanner'
 import { applySeo } from '@/lib/seo'
@@ -21,7 +20,6 @@ export default function Home() {
       <HeroCarousel />
       <ReviewsSection />
       <NewsSection />
-      <CareersSection />
       <CommunitySection />
       <NewsletterBanner />
     </div>
