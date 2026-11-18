@@ -11,7 +11,7 @@ interface CommunityRowProps {
 
 export default function CommunityRow({ id, tag, title, isNew, comments, date }: CommunityRowProps) {
   return (
-    <Link to={`/community/${id}`} className="flex items-center gap-3 py-3 border-b border-gray-100 hover:opacity-80 transition-opacity">
+    <Link to={`/community/${id}`} className="clickable-card flex items-center gap-3 py-3 border-b border-gray-100 hover:opacity-80">
       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded flex-shrink-0">{tag}</span>
       <p className="text-sm text-gray-800 flex-1 truncate">{title}</p>
       <div className="flex items-center gap-2 flex-shrink-0">

@@ -18,7 +18,7 @@ export default function NewsSection() {
         <Link to="/news" className="text-sm text-muted hover:text-teal transition-colors">See all</Link>
       </div>
 
-      <Link to={`/news/${hero.id}`} className="group block mb-6">
+      <Link to={`/news/${hero.id}`} className="clickable-card group block mb-6">
         <div className="relative w-full h-64 sm:h-72 rounded-2xl overflow-hidden">
           <img src={hero.image} alt={hero.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/30 to-transparent" />
@@ -31,7 +31,7 @@ export default function NewsSection() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {cards.map((card) => (
-          <Link key={card.id} to={`/news/${card.id}`} className="group block bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+          <Link key={card.id} to={`/news/${card.id}`} className="clickable-card group block bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md">
             <div className="h-40 overflow-hidden">
               <img src={card.image} alt={card.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>

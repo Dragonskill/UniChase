@@ -48,7 +48,7 @@ export default function HeroCarousel() {
               variant="hero"
               className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mt-3 mb-5"
             />
-            <Link to={slides[current].link} className="bg-white text-navy px-6 py-2.5 rounded-xl font-semibold hover:bg-cream transition-colors shadow-lg inline-block">
+            <Link to={slides[current].link} className="animated-button-link bg-white text-navy px-6 py-2.5 rounded-xl font-semibold hover:bg-cream transition-colors shadow-lg inline-block">
               Read More
             </Link>
           </motion.div>

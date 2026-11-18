@@ -31,7 +31,7 @@ export default function Careers() {
       <motion.div layout className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
         {filtered.map((job) => (
           <motion.div key={job.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-            <Link to={`/careers/${job.id}`} className="flex items-center gap-4 p-4 hover:bg-cream transition-colors">
+            <Link to={`/careers/${job.id}`} className="clickable-card flex items-center gap-4 p-4 hover:bg-cream">
               <img src={job.logo} alt={job.company} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">

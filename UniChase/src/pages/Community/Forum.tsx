@@ -29,7 +29,7 @@ export default function Forum() {
         {tab === 'forum' ? (
           <motion.div key="forum" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="bg-surface rounded-2xl shadow-sm divide-y divide-gray-100">
             {forumPosts.map((post) => (
-              <Link key={post.id} to={`/community/${post.id}`} className="flex items-center gap-3 p-4 hover:bg-cream transition-colors">
+              <Link key={post.id} to={`/community/${post.id}`} className="clickable-card flex items-center gap-3 p-4 hover:bg-cream">
                 <span className="text-xs bg-cream-dark text-ink px-2 py-0.5 rounded flex-shrink-0">{post.tag}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-navy truncate">{post.title}{post.isNew && <span className="text-xs text-teal font-semibold ml-2">NEW</span>}</p>
@@ -45,7 +45,7 @@ export default function Forum() {
         ) : (
           <motion.div key="qa" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="flex flex-col gap-3">
             {qaPosts.map((post) => (
-              <Link key={post.id} to={`/community/qa-${post.id}`} className="flex items-center gap-4 p-4 bg-surface rounded-xl shadow-sm hover:shadow-md transition-shadow">
+              <Link key={post.id} to={`/community/qa-${post.id}`} className="clickable-card flex items-center gap-4 p-4 bg-surface rounded-xl shadow-sm hover:shadow-md">
                 <div className="flex flex-col items-center justify-center w-14 flex-shrink-0">
                   <span className={`text-lg font-bold ${post.solved ? 'text-teal' : 'text-muted'}`}>{post.answers}</span>
                   <span className="text-xs text-muted">answers</span>

@@ -14,10 +14,14 @@ export default function App() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location.pathname}
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -6 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
+          exit={reduceMotion ? undefined : {
+            opacity: 0,
+            y: -3,
+            transition: { duration: 0.09, ease: 'easeIn' },
+          }}
+          transition={{ duration: reduceMotion ? 0 : 0.16, ease: 'easeOut' }}
         >
           {outlet}
         </motion.main>

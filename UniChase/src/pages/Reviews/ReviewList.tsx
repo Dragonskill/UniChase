@@ -31,7 +31,7 @@ export default function ReviewList() {
       <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((review) => (
           <motion.div key={review.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-            <Link to={`/reviews/${review.id}`} className="group block bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <Link to={`/reviews/${review.id}`} className="clickable-card group block bg-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md">
               <div className="h-44 overflow-hidden">
                 <img src={review.image} alt={review.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>

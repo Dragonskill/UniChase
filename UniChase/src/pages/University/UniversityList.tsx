@@ -413,7 +413,7 @@ function UniversityList() {
       <motion.div
         key={`${isLoading}-${universityList.length}`}
         aria-busy={isLoading}
-        initial={reduceMotion ? false : { opacity: 0.94 }}
+        initial={reduceMotion || isLoading ? false : { opacity: 0.85 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
         className="card-pop university-card-grid"

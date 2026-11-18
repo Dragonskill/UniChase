@@ -122,20 +122,35 @@ html[data-theme="dark"] textarea::placeholder {
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     transition:
       box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
       transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .university-card-link:hover {
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
-    transform: translateY(-0.25rem);
   }
 
   html[data-theme="dark"] .university-card-link {
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
   }
 
-  html[data-theme="dark"] .university-card-link:hover {
-    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+  @media (hover: hover) and (pointer: fine) {
+    .university-card-link:hover {
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+      transform: translateY(-0.25rem);
+    }
+
+    html[data-theme="dark"] .university-card-link:hover {
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+    }
+  }
+
+  .university-card-link:active:not(:has(button:active)),
+  .clickable-card:active {
+    transform: scale(0.99);
+    transition-duration: 90ms;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .clickable-card:hover:not(:active) {
+      transform: translateY(-2px);
+    }
   }
 
   .university-card-shell {
@@ -260,39 +275,31 @@ html[data-theme="dark"] textarea::placeholder {
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  :where(button):not(:disabled) {
-    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
-  }
-
   :where(a[href]) {
     transition-property: color, background-color, border-color, opacity, text-decoration-color, box-shadow, transform;
   }
 
-  :where(a[href][class*="shadow"]):not([class*="-translate-y"]) {
-    will-change: transform;
-  }
-
   @media (hover: hover) and (pointer: fine) {
-    :where(button):not(:disabled):hover {
+    :where(button:not(:disabled), .animated-button-link):hover {
       transform: translateY(-1px) scale(1.01);
     }
 
-    :where(a[href][class*="shadow"]):not([class*="-translate-y"]):hover {
+    :where(a[href][class*="shadow"]:not(.animated-button-link, .clickable-card, [class*="-translate-y"])):hover {
       transform: translateY(-2px);
     }
   }
 
-  :where(button):not(:disabled):active {
-    transform: translateY(0) scale(0.98);
+  :where(button:not(:disabled), .animated-button-link):active {
+    transform: scale(0.975);
     transition-duration: 90ms;
   }
 
-  :where(a[href]):active {
+  :where(a[href]):active:not(:has(button:active)) {
     opacity: 0.92;
     transition-duration: 90ms;
   }
 
-  :where(a[href][class*="shadow"]):active {
+  :where(a[href][class*="shadow"]:not(.animated-button-link, .clickable-card)):active {
     transform: translateY(0) scale(0.99);
   }
 
@@ -314,6 +321,26 @@ html[data-theme="dark"] textarea::placeholder {
       animation: none !important;
       transform: none !important;
     }
+  }
+}
+
+:is(button:not(:disabled), .animated-button-link) {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+}
+
+.clickable-card {
+  transition-property: opacity, transform, box-shadow, background-color, border-color, color;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .data-result-enter {
+    animation: data-result-enter 160ms ease-out;
+  }
+}
+
+@keyframes data-result-enter {
+  from {
+    opacity: 0.85;
   }
 }
 
