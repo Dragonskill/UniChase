@@ -1,3 +1,4 @@
+import { createAuthLimiter } from "../rateLimits.js"
 import { Router } from "express"
 import { signAdminToken, verifyPassword } from "../auth.js"
 import { ApiError, asyncHandler } from "../errors.js"
@@ -5,6 +6,7 @@ import { adminLoginSchema, validateBody } from "../validation.js"
 
 export function createAuthRouter(prisma) {
   const router = Router()
+  router.use(createAuthLimiter())
 
   router.post(
     "/login",
@@ -30,6 +32,7 @@ export function createAuthRouter(prisma) {
           admin: {
             id: admin.id,
             email: admin.email,
+            role: admin.role,
           },
         },
       })

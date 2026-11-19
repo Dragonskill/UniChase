@@ -1,0 +1,94 @@
+name: unichase-production
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  DATABASE_URL: postgresql://unichase:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/unichase?schema=public&connect_timeout=5&pool_timeout=5
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+  CORS_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN}
+  PORT: "3001"
+  TRUST_PROXY_HOPS: "1"
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: unichase
+      POSTGRES_USER: unichase
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unichase -d unichase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: ${IMAGE_PREFIX:-unichase}/migrate:${IMAGE_TAG:-local}
+    build:
+      context: .
+      target: migrate
+    environment: *api-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: ${IMAGE_PREFIX:-unichase}/migrate:${IMAGE_TAG:-local}
+    profiles: ["tools"]
+    build:
+      context: .
+      target: migrate
+    environment:
+      <<: *api-environment
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    command: ["npm", "run", "db:seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    image: ${IMAGE_PREFIX:-unichase}/api:${IMAGE_TAG:-local}
+    build:
+      context: .
+      target: api
+    environment: *api-environment
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 35s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: ${IMAGE_PREFIX:-unichase}/web:${IMAGE_TAG:-local}
+    build:
+      context: .
+      target: web
+      args:
+        VITE_SITE_URL: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN}
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - certificates:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  database:
+  certificates:
+  caddy-config:

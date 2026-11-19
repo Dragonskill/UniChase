@@ -1,282 +1,162 @@
 # UniChase
 
-UniChase is a React/Vite university discovery website with an Express, PostgreSQL, and Prisma backend.
+UniChase is a university discovery and application-planning platform for international students interested in South Korea. This repository contains the React application, Express API, PostgreSQL schema, data seed, moderator workspace, and student tools.
 
-The public visual design is intentionally preserved. New functionality reuses the existing card, form, button, spacing, color, and typography language.
+The current UI keeps the established UniChase logo, navy/teal palette, card system, navigation, typography, animations, and page structure. It supports light mode plus a soft navy dark mode, responsive layouts, keyboard focus, reduced motion, and English, Korean, Russian, and Uzbek navigation labels.
 
-## Features
+## What is included
 
-- Backend-loaded university list and detail pages
-- QS 2026 seed coverage for the 28 South Korean institutions listed in the QS global top 1000
-- Advanced university filters: city, QS ranking range, tuition range, major, language, dormitory, public/private type, deadline status, and study level
-- University comparison for 2 to 4 universities
-- Save/favorite universities with localStorage and optional account sync
-- Student council profiles and role/member placeholders with source URLs and verification status
-- Light/dark theme toggle with localStorage persistence and first-visit system preference support
-- University image metadata for campus photos, logos, alt text, source URLs, image verification dates, and generated fallbacks
-- Equal-height university cards with fixed image ratio, lazy image loading, broken-image fallback handling, result count, sorting, share links, breadcrumbs, recently viewed universities, and back-to-top navigation
-- Student account register/login/logout with hashed passwords and JWTs
-- Student dashboard with saved universities, comparisons, checklist, deadlines, recommendations link, and profile
-- Application deadline tracking inside university data and dashboard reminders
-- Rule-based "Find My Best University Match" recommendations
-- Expanded university detail pages with tuition, programs, requirements, documents, steps, housing, student life, deadlines, official links, and contact data
-- Improved search across names, Korean names, city, majors, programs, tags, language, and descriptions
-- SEO metadata, Open Graph/Twitter tags, canonical URLs, structured data, `sitemap.xml`, and `robots.txt`
-- Interface language switcher for English, Korean, Russian, and Uzbek labels
-- Contact/support form stored in the database
-- Moderator tools for backend admins to add, edit, verify, and delete student council records and council roles
-- Moderator image tools for campus image URL, logo URL, alt text, image source URL, and verification dates
+- Searchable and paginated South Korean university directory with combined queries, filters, sorting, recent searches, stable cards, fallbacks, and clean detail URLs
+- Backend-synced saves and follows for signed-in users; account-scoped guest saves and device-local comparison for 2–4 universities
+- Rule-based matching with scored reasons and disadvantages; results are guidance and never an admission guarantee
+- Verified program pages for the small set of programs for which official sources were recorded
+- Student councils with role placeholders, verification metadata, and moderator editing without invented people
+- Student authentication, profile, onboarding, dashboard, applications, document tracking, roadmaps, document checklists, essay drafts and rule-based feedback
+- Eligibility history, cost estimates, visa checklist and official visa-source links, searchable FAQ, reminders, notifications, and calendar with single/all-event ICS exports
+- Community posts, replies, nested comments, likes, saves, reports, ownership controls, review moderation, and moderator announcements
+- RBAC moderator roles, queues, university/program/image/council management, activity logs, support messages, analytics, and CSV export
+- Page-level metadata, canonicals, Open Graph/Twitter metadata, structured data, route splitting, and environment-aware sitemap generation
+- PDF exports for comparison, shortlist, recommendations, roadmaps, document checklists, costs, and eligibility. Non-Latin content uses the browser print dialog so the installed system fonts can render it accurately.
 
-Excluded by design:
+## Architecture
 
-- No user-submitted corrections
-- No separate scholarship database section
-- No interactive map
-- No admin dashboard redesign
+| Layer | Technology | Location |
+| --- | --- | --- |
+| Web client | React 19, TypeScript, Vite, Tailwind CSS, Framer Motion | `src/` |
+| API | Node.js, Express 5, Zod validation | `server/src/` |
+| Database | PostgreSQL, Prisma 6 | `prisma/` |
+| Shared curated data | JSON university/program catalogs | `data/` |
+| API regression tests | Vitest with HTTP route harnesses | `server/tests/` |
 
-## Stack
+The Vite development server proxies `/api` to `http://127.0.0.1:3001`. In a split deployment, set `VITE_API_BASE_URL` to the public API path. The backend allows only configured `CORS_ORIGIN` values.
 
-- Frontend: React, TypeScript, Vite, Tailwind CSS, Framer Motion
-- Backend: Node.js, Express
-- Database: PostgreSQL
-- ORM: Prisma
-- Auth: JWT with bcrypt password hashing
-- Validation: Zod
+## Local setup
 
-## Environment Variables
-
-Create `.env` from `.env.example` and replace placeholder secrets.
+Requirements: Node.js 24 LTS and PostgreSQL.
 
 ```bash
-DATABASE_URL="postgresql://postgres:postgres@localhost:55432/unichase?schema=public"
-JWT_SECRET="replace-with-a-long-random-secret"
-ADMIN_EMAIL="admin@example.com"
-ADMIN_PASSWORD="replace-with-a-strong-password"
-PORT=3001
-CORS_ORIGIN="http://localhost:5173,http://127.0.0.1:5173"
-VITE_API_BASE_URL="http://localhost:3001/api"
-```
-
-Email sending is not configured. Contact messages are stored in `ContactMessage`; add an email provider later if notifications are needed.
-
-## Local Setup
-
-```bash
-npm install
-docker compose up -d postgres
+npm ci
+cp .env.example .env
 npm run db:generate
 npm run db:deploy
 npm run db:seed
 ```
 
-`npm run seed:universities` is an alias for the same seed command.
-
-Run the backend:
+Start the API and frontend in separate terminals:
 
 ```bash
 npm run server:dev
-```
-
-Run the frontend:
-
-```bash
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`. Health check: `GET http://localhost:3001/api/health`.
 
-## Database
+For a new admin, set `ADMIN_EMAIL` and a unique 12–72 byte `ADMIN_PASSWORD` before the first seed. The seed creates that admin only when it does not exist; it never resets an existing password. Do not use the example values in production.
 
-Prisma schema and migrations live in `prisma/`.
+## Environment variables
 
-Main models:
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `JWT_SECRET` | yes | Long random secret for signed student/admin tokens |
+| `JWT_EXPIRES_IN` | no | Token lifetime; defaults to `8h` |
+| `ADMIN_EMAIL` | seed only | Initial admin email |
+| `ADMIN_PASSWORD` | seed only | Initial admin password; minimum 12 characters/maximum 72 UTF-8 bytes |
+| `PORT` | no | API port; defaults to `3001` |
+| `CORS_ORIGIN` | production | Comma-separated allowed web origins |
+| `VITE_API_BASE_URL` | split deploy | Public API prefix; browser default is `/api` |
+| `VITE_SITE_URL` | production SEO | Public origin used to create absolute sitemap URLs |
+| `EMAIL_REMINDERS_ENABLED` | no | Set `true` only after SMTP is configured |
+| `SMTP_HOST`, `SMTP_PORT` | email | SMTP server and port |
+| `SMTP_USER`, `SMTP_PASSWORD` | email | SMTP credentials, when required |
+| `EMAIL_FROM` | email | Verified sender identity |
 
-- `University`
-- `StudentCouncil`
-- `StudentCouncilRole`
-- `ModeratorProfile`
-- `AdminUser`
-- `StudentUser`
-- `SavedUniversity`
-- `ComparisonSet`
-- `ComparisonUniversity`
-- `UserDeadline`
-- `ChecklistItem`
-- `RecommendationPreference`
-- `ContactMessage`
+Reminder transport requires TLS on ports other than 465, rejects remote/file content loading, and sends only to the account email. With email disabled, schedules remain visible in the app and no message is sent.
 
-Useful commands:
+## Database and migrations
+
+Use `npm run db:deploy` in staging and production. Migrations are additive; the seed does not truncate tables, replace editorial content, remove users, or reset credentials.
 
 ```bash
 npm run db:generate
-npm run db:migrate
-npm run db:deploy
-npm run db:seed
-npm run seed:universities
+npm run db:migrate   # local migration development only
+npm run db:deploy    # apply committed migrations
+npm run db:seed      # idempotent catalog seed
 ```
 
-Seed data includes every South Korean institution in the QS World University Rankings 2026 global top 1000, based on:
+Core models cover universities/programs, accounts/RBAC, saves/follows/comparisons, councils, applications/documents/calendar, community/moderation, notifications/analytics, and every student planning tool. `ManagedContent` stores moderator-controlled news, legacy Q&A, community, and society panels in PostgreSQL. Calendar source keys connect roadmap, visa, document, application, deadline, and reminder dates without duplicating events.
 
-- [QS World University Rankings](https://www.topuniversities.com/qs-top-uni-wur)
-- [Truescho country ranking mirror for Korea](https://truescho.com/en/rankings/country/kr)
+The document vault currently stores private tracking metadata, status, notes, associations, and expiry. The upload endpoint intentionally returns `501` until a private object-store integration with MIME/size checks and signed URLs is configured; public file URLs are not accepted or exposed.
 
-The seed stores QS rank labels, source URLs, verification timestamps, and student council placeholders. It intentionally does not invent real student council people; role/member records start as placeholders marked `needs verification` until a moderator verifies public sources or adds known information.
+## University and program data
 
-University image data uses official university pages where available and reliable public Wikimedia/Wikipedia source pages for some logos or campus images. When a verified image is missing or a URL fails to load, the frontend falls back to a generated UniChase campus/logo placeholder so cards and detail pages do not shift or break.
+`data/universities.json` contains 31 South Korean institutions listed within the QS World University Rankings 2027 top 1000. Ranking labels, year, source, and verification date come from the official [QS South Korea guide](https://www.topuniversities.com/where-to-study/asia/south-korea/guide). Unknown admission rates, tuition, housing, deadlines, translations, and contacts remain `null`, empty, or marked `needs verification` rather than being guessed.
 
-New `University` image fields:
+`data/programs.json` includes three undergraduate computer-science catalog records backed by official curriculum pages:
 
-- `campusImageUrl`
-- `logoUrl`
-- `imageAlt`
-- `imageSourceUrl`
-- `imageLastVerifiedAt`
+- [Seoul National University](https://cse.snu.ac.kr/en/academics/undergraduate/degree-requirements)
+- [Korea University](https://cs.korea.edu/en_cs/under/computer_Curriculum.do)
+- [Yonsei University](https://cais.yonsei.ac.kr/csai_en/educate/facultyCurri.do)
 
-## API Endpoints
+The seed updates verified ranking fields for existing universities while preserving existing IDs and editorial fields. It inserts missing universities, programs, council containers, and unnamed role titles. Images use stored official/reliable source metadata where present, fixed aspect ratios, lazy loading, and generated visual fallbacks. Moderators can edit image URLs, alt text, source URLs, and verification dates.
 
-Public:
+## Authentication and authorization
 
-- `GET /api/health`
-- `GET /api/universities`
-- `GET /api/universities/:idOrSlug`
-- `GET /api/universities/:idOrSlug/student-council`
-- `GET /api/universities/search`
-- `GET /api/universities/filter`
-- `GET /api/universities/compare?ids=1,2`
-- `POST /api/universities/recommendations`
-- `GET /api/student-councils`
-- `GET /api/student-councils/:id`
-- `POST /api/contact`
+Passwords are hashed with bcrypt. JWT verification allows only HS256, checks the database account on every protected request, and enforces a configurable expiry. Student records are owner-scoped on the server. Admin tokens are checked against one of these stored roles:
 
-University query parameters:
+- `admin`
+- `moderator`
+- `university_editor`
+- `content_editor`
+- `community_moderator`
 
-- `q`, `search`, `name`
-- `city`
-- `rankingMin`, `rankingMax`, `ranking`, `maxRanking`
-- `tuitionMin`, `tuitionMax`, `tuition`, `maxTuition`
-- `major`
-- `language`
-- `english`
-- `dormitory`
-- `type`
-- `deadline`
-- `level`
-- `scholarship`, `hasScholarships`
-- `sort`: `qsRank`, `name`, `city`, `tuition`, or `recent`
+Permissions are enforced by API route, not by client-side controls. Validation rejects unsupported URL protocols, overlong values, invalid IDs/dates, and unknown moderation status transitions. API errors are normalized without exposing secrets or database details. General, login, registration, and contact rate limits are applied separately.
 
-Student auth:
+## Major API groups
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
+- Public: `/api/universities`, `/api/programs`, `/api/reviews`, `/api/student-councils`, `/api/content`, `/api/community`, `/api/contact`
+- Student auth/workspace: `/api/auth`, `/api/user`, `/api/student-tools`, `/api/notifications`
+- Administration: `/api/admin`, `/api/admin/universities`, `/api/moderator`, `/api/analytics`
 
-Student dashboard:
+University list responses include `data` and pagination `meta` (`total`, `page`, `limit`, `pages`). List filters accept search, city, ranking, tuition, program/major, language, English instruction, dormitory, type, level, scholarship, deadline status, and sort parameters.
 
-- `GET /api/user/profile`
-- `PATCH /api/user/profile`
-- `GET /api/user/saved-universities`
-- `POST /api/user/saved-universities`
-- `DELETE /api/user/saved-universities/:id`
-- `GET /api/user/deadlines`
-- `POST /api/user/deadlines`
-- `GET /api/user/checklist`
-- `PATCH /api/user/checklist`
+## Moderation and analytics
 
-Admin:
+The moderator page supports catalog/image/council/role edits, managed content, pending and reported community items, pending reviews, report resolution, verification queues, announcements, support messages, and activity history. Catalog changes require source-aware manual judgment. Activity records store the moderator, action, entity, previous/new state or status, and timestamp where relevant.
 
-- `POST /api/admin/login`
-- `GET /api/admin/universities`
-- `POST /api/admin/universities`
-- `PUT /api/admin/universities/:id`
-- `DELETE /api/admin/universities/:id`
+Analytics captures bounded event types and necessary metadata for views, search/filter, save/follow/compare/recommendation, planning, application, document, community, contact, and registration reporting. It avoids storing passwords, documents, message contents, or other unnecessary private fields.
 
-Moderator:
+## Calendar, reminders, and PDF
 
-- `POST /api/moderator/universities`
-- `PATCH /api/moderator/universities/:id`
-- `PATCH /api/moderator/universities/:id/images`
-- `POST /api/moderator/student-councils`
-- `PATCH /api/moderator/student-councils/:id`
-- `DELETE /api/moderator/student-councils/:id`
-- `POST /api/moderator/student-council-roles`
-- `PATCH /api/moderator/student-council-roles/:id`
-- `DELETE /api/moderator/student-council-roles/:id`
-- `POST /api/moderator/profile`
-- `PATCH /api/moderator/profile`
+Opening/exporting the calendar syncs dated applications, roadmaps, checklist items, document expiry, visa tasks, followed/saved university deadlines, results, and scheduled reminders into owned events. Completing connected roadmap/checklist/visa events updates their source records. Cancelled generated events remain cancelled until their source changes; custom events can be deleted.
 
-Protected routes require:
+PDFs contain UniChase branding and a creation date. Export runs in the browser and should be used only on a trusted device for private student records.
 
-```http
-Authorization: Bearer <token>
-```
+## SEO and deployment
 
-## SEO
+The public review site is deployed independently through `.github/workflows/pages.yml` to GitHub Pages. Its build uses `VITE_BASE_PATH=/UniChase/` and `VITE_GITHUB_PAGES=true` for project-path assets and refresh-safe hash routing. No ChatGPT hosting configuration is required. GitHub Pages serves the frontend only; without an explicit `VITE_API_BASE_URL`, catalog fallbacks and local question drafts work, while account and live community services are unavailable. Do not claim a draft was sent to an advisor. KUUSA names, photos, social URLs, and memberships must be confirmed before publication; the supplied design's example identities and counts are not production data.
 
-The app updates page titles, descriptions, canonical links, Open Graph/Twitter tags, and university structured data client-side. Static crawler hints live in:
+For the full application with HTTPS, API, and PostgreSQL on a Docker server, follow [Docker deployment](deploy/README.md). The production Compose stack provides migration ordering, persistent volumes, database readiness checks, and a private API/database network. The existing `docker-compose.yml` remains a local development database only.
 
-- `public/sitemap.xml`
-- `public/robots.txt`
+`npm run build` type-checks, creates split production assets, and runs the sitemap generator. Set `VITE_SITE_URL` to the exact public origin (for example, `https://your-domain.example/`) during the production build. If it is unset, the build removes a stale sitemap instead of publishing incorrect URLs and writes a conservative `robots.txt`.
 
-Clean university URLs are available at `/universities/:slug`, while legacy `/university/:id` still works.
+The included `vercel.json` provides SPA rewrites for the frontend. Deploy the API to a persistent Node service with PostgreSQL, set the environment variables there, run `npm run db:deploy`, then run `npm run db:seed` once. Point the frontend at that API or proxy `/api` to it. The reminder worker runs inside the API process; use one worker instance or separate it before horizontally scaling the API.
 
-## Language System
+## Verification
 
-The language switcher stores the selected language in localStorage and translates interface labels for English, Korean, Russian, and Uzbek. University content remains English unless translated university fields are added later.
-
-## Theme System
-
-The navbar includes an accessible light/dark mode toggle. The selected theme is stored in localStorage under `unichase.theme`; if no theme is saved, the app uses the operating system preference. Theme colors are driven by CSS variables so light mode stays close to the original UniChase design while dark mode adjusts surfaces, text, borders, form controls, cards, dropdowns, and moderator/dashboard pages.
-
-## Image Management
-
-Moderators can update university image data from the Student Councils moderator tab after selecting a university. Editable fields include campus image URL, logo URL, image alt text, image source URL, image verification date, and university verification date. URL and date fields are validated by the API, and public image rendering falls back automatically if a URL is missing or broken.
-
-## Deployment
-
-Frontend:
-
-1. Set `VITE_API_BASE_URL` to the production API URL.
-2. Run `npm run build`.
-3. Deploy `dist/` to a static host.
-
-Backend:
-
-1. Provision PostgreSQL.
-2. Set `DATABASE_URL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORT`, and `CORS_ORIGIN`.
-3. Run `npm run db:deploy`.
-4. Run `npm run db:seed` once to load the QS 2026 Korea dataset and create the backend admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
-5. Start with `npm run server:start`.
-
-For Vercel-only hosting, deploy the Express backend separately or adapt it into serverless functions. This project is Vite, not Next.js.
-
-## Testing
-
-Automated checks:
+Run the project gates before deployment:
 
 ```bash
-npm run test
 npm run lint
+npm run test
 npm run build
-npm audit --omit=dev
+npm audit
+npm run db:deploy
+npm run db:seed
 ```
 
-Manual checks used during development:
+The repository regression suites cover validation, authentication/RBAC, ownership, follow/save behavior, moderation persistence, calendar exports, nullable dates, cost bounds, eligibility scoring, and reminder claiming. A deployment still needs its own smoke test with the production database, SMTP provider, public origin, CORS setting, and object storage choice.
 
-- Advanced filters and search
-- Compare selection and comparison page
-- Saved universities and dashboard display
-- Student registration and protected profile endpoint
-- Checklist updates
-- Deadline saving
-- Recommendation form and scored results
-- Expanded university detail pages
-- Student council detail sections and role verification badges
-- Moderator backend login plus student council create, update, and delete flows
-- Moderator university image edit flow
-- University sorting and result counts
-- Equal-height card rendering with image fallbacks
-- Light/dark theme toggle persistence
-- Contact form storage
-- Language switcher
-- Mobile layout
-- Backend health and all new API endpoint categories
+## Deliberate product boundaries
+
+UniChase does not include counselor/mentor mode, agency multi-student management, an interactive map, a separate scholarship marketplace, or uncontrolled user editing of university facts. Scholarship information remains attached to university/program data and matching preferences.

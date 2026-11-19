@@ -1,3 +1,5 @@
+import { permit } from "../permissions.js"
+import { parsePagination } from "../pagination.js"
 import { Router } from "express"
 import { requireAdmin } from "../auth.js"
 import { ApiError, asyncHandler, isPrismaMissingRecord } from "../errors.js"
@@ -15,15 +17,18 @@ const defaultOrder = [{ qsRanking: { sort: "asc", nulls: "last" } }, { name: "as
 export function createAdminUniversityRouter(prisma) {
   const router = Router()
 
-  router.use(requireAdmin(prisma))
+  router.use(requireAdmin(prisma), permit("universities"))
 
   router.get(
     "/",
     asyncHandler(async (req, res) => {
       const filters = parseUniversityQuery(req.query)
+      const pagination = parsePagination(req.query)
       const universities = await prisma.university.findMany({
         where: buildUniversityWhere(filters),
         orderBy: defaultOrder,
+        take: pagination.take,
+        skip: pagination.skip,
       })
 
       res.json({

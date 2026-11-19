@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.openai
+.env
+.env.*
+*.log
+coverage
+backups
+*.dump

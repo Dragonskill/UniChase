@@ -13,6 +13,7 @@ export function signAdminToken(admin) {
       sub: String(admin.id),
       email: admin.email,
       role: "admin",
+      adminRole: admin.role || "admin",
     },
     getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || "8h" },
@@ -43,21 +44,21 @@ export function requireAdmin(prisma) {
     let payload
 
     try {
-      payload = jwt.verify(match[1], getJwtSecret())
+      payload = jwt.verify(match[1], getJwtSecret(), { algorithms: ["HS256"] })
     } catch {
       throw new ApiError(401, "Invalid or expired admin token")
     }
 
-    if (!payload || payload.role !== "admin" || !payload.sub) {
+    if (!payload || payload.role !== "admin" || !/^\d+$/.test(String(payload.sub)) || !Number.isSafeInteger(Number(payload.sub)) || Number(payload.sub) <= 0 || Number(payload.sub) > 2147483647) {
       throw new ApiError(401, "Invalid admin token")
     }
 
     const admin = await prisma.adminUser.findUnique({
       where: { id: Number(payload.sub) },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true },
     })
 
-    if (!admin) {
+    if (!admin || !["admin", "moderator", "university_editor", "content_editor", "community_moderator"].includes(admin.role)) {
       throw new ApiError(401, "Admin user no longer exists")
     }
 
@@ -78,12 +79,12 @@ export function requireStudent(prisma) {
     let payload
 
     try {
-      payload = jwt.verify(match[1], getJwtSecret())
+      payload = jwt.verify(match[1], getJwtSecret(), { algorithms: ["HS256"] })
     } catch {
       throw new ApiError(401, "Invalid or expired student token")
     }
 
-    if (!payload || payload.role !== "student" || !payload.sub) {
+    if (!payload || payload.role !== "student" || !/^\d+$/.test(String(payload.sub)) || !Number.isSafeInteger(Number(payload.sub)) || Number(payload.sub) <= 0 || Number(payload.sub) > 2147483647) {
       throw new ApiError(401, "Invalid student token")
     }
 
@@ -99,4 +100,11 @@ export function requireStudent(prisma) {
     req.user = user
     next()
   })
+}
+
+export function optionalStudent(prisma) {
+  return (req, res, next) => {
+    if (!req.headers.authorization) return next()
+    return requireStudent(prisma)(req, res, next)
+  }
 }

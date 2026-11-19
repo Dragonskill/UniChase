@@ -3,34 +3,36 @@ export type ThemeMode = "light" | "dark"
 const themeKey = "unichase.theme"
 export const themeChangeEvent = "unichase:theme-change"
 
-function systemTheme(): ThemeMode {
-  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-    return "dark"
-  }
-
-  return "light"
-}
-
 export function getStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") {
-    return "light"
-  }
-
-  const stored = localStorage.getItem(themeKey)
-  return stored === "dark" || stored === "light" ? stored : systemTheme()
+  try {
+    const stored = localStorage.getItem(themeKey)
+    if (stored === "light" || stored === "dark") return stored
+  } catch { /* Browser preferences may be unavailable in private contexts. */ }
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
 export function applyTheme(theme: ThemeMode) {
-  if (typeof document === "undefined") {
-    return
-  }
-
+  if (typeof document === "undefined") return
   document.documentElement.dataset.theme = theme
   document.documentElement.style.colorScheme = theme
 }
 
 export function setStoredTheme(theme: ThemeMode) {
-  localStorage.setItem(themeKey, theme)
+  try { localStorage.setItem(themeKey, theme) } catch { /* Keep this session usable. */ }
   applyTheme(theme)
   window.dispatchEvent(new Event(themeChangeEvent))
+}
+
+export function watchSystemTheme() {
+  const media = window.matchMedia("(prefers-color-scheme: dark)")
+  const sync = () => {
+    applyTheme(getStoredTheme())
+    window.dispatchEvent(new Event(themeChangeEvent))
+  }
+  media.addEventListener("change", sync)
+  window.addEventListener("storage", sync)
+  return () => {
+    media.removeEventListener("change", sync)
+    window.removeEventListener("storage", sync)
+  }
 }

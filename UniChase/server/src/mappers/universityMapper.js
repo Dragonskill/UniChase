@@ -11,6 +11,8 @@ export function mapUniversityForClient(university) {
     koreanName: university.koreanName,
     location: university.city,
     city: university.city,
+    province: university.province ?? null,
+    verificationStatus: university.verificationStatus || "needs verification",
     country: university.country,
     universityType: university.universityType,
     qsRanking:
@@ -197,6 +199,8 @@ export function getDeadlineStatus(university, now = new Date()) {
   }
 
   const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+
+  if (openDate && openDate > now) return "upcoming"
 
   if (daysUntilDeadline <= 45) {
     return "deadline soon"

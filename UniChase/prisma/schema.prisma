@@ -8,6 +8,9 @@ datasource db {
 }
 
 model University {
+  province                 String?
+  verificationStatus       String @default("needs verification")
+  followedBy               FollowedUniversity[]
   id                       Int      @id @default(autoincrement())
   name                     String   @unique
   slug                     String?  @unique
@@ -63,8 +66,17 @@ model University {
   savedBy                  SavedUniversity[]
   comparisonItems          ComparisonUniversity[]
   deadlineReminders        UserDeadline[]
+  degreePrograms           Program[]
+  applicationRoadmaps      ApplicationRoadmap[]
+  documentChecklists       DocumentChecklist[]
+  costEstimates            CostEstimate[]
+  eligibilityResults       EligibilityResult[]
+  reviews                  UniversityReview[]
   studentCouncil           StudentCouncil?
   studentCouncilRoles      StudentCouncilRole[]
+  communityPosts           CommunityPost[]
+  applications             UserApplication[]
+  calendarEvents           CalendarEvent[]
 
   @@index([city])
   @@index([country])
@@ -128,11 +140,15 @@ model AdminUser {
   id           Int      @id @default(autoincrement())
   email        String   @unique
   passwordHash String
+  role         String   @default("admin")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   councilRoles     StudentCouncilRole[]
   moderatorProfile ModeratorProfile?
+  activityLogs     ModeratorActivityLog[]
+  internalNotes    ModeratorInternalNote[]
+  managedContent   ManagedContent[]
 }
 
 model ModeratorProfile {
@@ -150,6 +166,7 @@ model ModeratorProfile {
 }
 
 model StudentUser {
+  followedUniversities      FollowedUniversity[]
   id                        Int                        @id @default(autoincrement())
   name                      String
   email                     String                     @unique
@@ -162,11 +179,31 @@ model StudentUser {
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
 
+  applicationRoadmaps       ApplicationRoadmap[]
+  documentChecklists        DocumentChecklist[]
+  essayDrafts               EssayDraft[]
+  visaChecklistItems        VisaChecklistItem[]
+  costEstimates             CostEstimate[]
+  eligibilityResults        EligibilityResult[]
+  universityReviews         UniversityReview[]
+  reminderPreference        ReminderPreference?
+  scheduledReminders        ScheduledReminder[]
   savedUniversities         SavedUniversity[]
   comparisonSets            ComparisonSet[]
   deadlineReminders         UserDeadline[]
   checklistItems            ChecklistItem[]
   recommendationPreferences RecommendationPreference[]
+  communityPosts            CommunityPost[]
+  communityComments         CommunityComment[]
+  communityLikes            CommunityLike[]
+  savedCommunityPosts       CommunitySavedPost[]
+  communityReports          CommunityReport[]
+  notifications             Notification[]
+  analyticsEvents           AnalyticsEvent[]
+  onboardingPreference      UserOnboardingPreference?
+  applications              UserApplication[]
+  documents                 UserDocument[]
+  calendarEvents            CalendarEvent[]
 }
 
 model SavedUniversity {
@@ -233,6 +270,8 @@ model ChecklistItem {
   updatedAt DateTime    @updatedAt
 
   user      StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents UserDocument[]
+  calendarEvents CalendarEvent[]
 }
 
 model RecommendationPreference {
@@ -263,4 +302,558 @@ model ContactMessage {
   message              String   @db.Text
   status               String   @default("new")
   createdAt            DateTime @default(now())
+}
+
+model CommunityPost {
+  id                Int                  @id @default(autoincrement())
+  title             String
+  content           String               @db.Text
+  category          String
+  universityId      Int?
+  relatedProgram    String?
+  tags              String[]             @default([])
+  authorId          Int
+  status            String               @default("published")
+  pinned            Boolean              @default(false)
+  officialAnswer    String?              @db.Text
+  officialCommentId Int?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  author            StudentUser          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  university        University?          @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  comments          CommunityComment[]
+  likes             CommunityLike[]
+  savedBy           CommunitySavedPost[]
+  reports           CommunityReport[]
+
+  @@index([authorId])
+  @@index([category])
+  @@index([universityId])
+  @@index([status])
+  @@index([pinned])
+  @@index([createdAt])
+}
+
+model CommunityComment {
+  id              Int                @id @default(autoincrement())
+  postId          Int
+  authorId        Int
+  content         String             @db.Text
+  parentCommentId Int?
+  status          String             @default("published")
+  official        Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  post            CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          StudentUser        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment   CommunityComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies         CommunityComment[] @relation("CommentReplies")
+  reports         CommunityReport[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentCommentId])
+  @@index([status])
+}
+
+model CommunityLike {
+  userId    Int
+  postId    Int
+  createdAt DateTime      @default(now())
+
+  user      StudentUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model CommunitySavedPost {
+  userId    Int
+  postId    Int
+  createdAt DateTime      @default(now())
+
+  user      StudentUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model CommunityReport {
+  id              Int               @id @default(autoincrement())
+  postId          Int?
+  commentId       Int?
+  reporterId      Int
+  reason          String
+  details         String?           @db.Text
+  status          String            @default("pending")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  post            CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment         CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter        StudentUser       @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([commentId])
+  @@index([reporterId])
+  @@index([status])
+}
+
+model Notification {
+  id                Int         @id @default(autoincrement())
+  userId            Int
+  type              String
+  title             String
+  message           String      @db.Text
+  relatedEntityType String?
+  relatedEntityId   Int?
+  linkUrl           String?
+  isRead            Boolean     @default(false)
+  priority          String      @default("normal")
+  createdAt         DateTime    @default(now())
+
+  user              StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ModeratorActivityLog {
+  id             Int        @id @default(autoincrement())
+  adminUserId    Int?
+  actionType     String
+  targetEntity   String
+  targetEntityId Int?
+  previousStatus String?
+  newStatus      String?
+  metadata       Json?
+  createdAt      DateTime   @default(now())
+
+  adminUser      AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([targetEntity, targetEntityId])
+  @@index([createdAt])
+}
+
+model ModeratorInternalNote {
+  id             Int       @id @default(autoincrement())
+  adminUserId    Int
+  targetEntity   String
+  targetEntityId Int?
+  note           String    @db.Text
+  createdAt      DateTime  @default(now())
+
+  adminUser      AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([targetEntity, targetEntityId])
+}
+
+model AnalyticsEvent {
+  id         Int          @id @default(autoincrement())
+  userId     Int?
+  sessionId  String?
+  eventType  String
+  entityType String?
+  entityId   Int?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+
+  user       StudentUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model UserOnboardingPreference {
+  id                    Int         @id @default(autoincrement())
+  userId                Int         @unique
+  desiredMajor          String?
+  degreeLevel           String?
+  preferredCity         String?
+  languagePreference    String?
+  budgetMin             Int?
+  budgetMax             Int?
+  qsRankMin             Int?
+  qsRankMax             Int?
+  dormitoryRequired     Boolean?
+  scholarshipPreference String?
+  targetIntake          String?
+  educationLevel        String?
+  preparationStage      String?
+  nationality           String?
+  testStatus            String?
+  onboardingCompleted   Boolean     @default(false)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  user                  StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserApplication {
+  id                  Int             @id @default(autoincrement())
+  userId              Int
+  universityId        Int
+  programId           String?
+  status              String          @default("Interested")
+  intake              String?
+  applicationDeadline DateTime?
+  submittedDate       DateTime?
+  resultDate          DateTime?
+  notes               String?         @db.Text
+  priority            String          @default("normal")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user                StudentUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university          University      @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  documents           UserDocument[]
+  calendarEvents      CalendarEvent[]
+
+  @@index([userId, status])
+  @@index([universityId])
+  @@index([applicationDeadline])
+}
+
+model UserDocument {
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  applicationId   Int?
+  checklistItemId Int?
+  documentType    String
+  title           String
+  status          String           @default("missing")
+  fileUrl         String?
+  fileName        String?
+  fileType        String?
+  fileSize        Int?
+  expirationDate  DateTime?
+  notes           String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            StudentUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application     UserApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  checklistItem   ChecklistItem?   @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([applicationId])
+  @@index([checklistItemId])
+  @@index([expirationDate])
+}
+
+model CalendarEvent {
+  sourceKey       String?
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  title           String
+  description     String?          @db.Text
+  eventType       String
+  startDate       DateTime
+  endDate         DateTime?
+  allDay          Boolean          @default(true)
+  universityId    Int?
+  programId       String?
+  applicationId   Int?
+  checklistItemId Int?
+  roadmapStepId   String?
+  status          String           @default("upcoming")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            StudentUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university      University?      @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  application     UserApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  checklistItem   ChecklistItem?   @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, sourceKey])
+  @@index([userId, startDate])
+  @@index([eventType])
+  @@index([status])
+  @@index([applicationId])
+}
+
+model Program {
+  id                    Int      @id @default(autoincrement())
+  universityId          Int
+  slug                  String   @unique
+  name                  String
+  degreeLevel           String
+  languageOfInstruction String
+  tuitionMin            Int?
+  tuitionMax            Int?
+  tuitionCurrency       String   @default("KRW")
+  duration              String?
+  requirements          String[] @default([])
+  requiredDocuments     String[] @default([])
+  applicationPeriod     String?
+  careerOutcomes        String[] @default([])
+  officialLink          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@index([universityId])
+  @@index([degreeLevel])
+  @@index([languageOfInstruction])
+  @@index([name])
+}
+
+model ApplicationRoadmap {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  universityId       Int?
+  targetMajor        String
+  degreeLevel        String
+  intake             String
+  preparationStatus  String
+  deadlinePreference String?
+  progress           Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user       StudentUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University?   @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  steps      RoadmapStep[]
+
+  @@index([userId])
+  @@index([universityId])
+}
+
+model RoadmapStep {
+  id          Int       @id @default(autoincrement())
+  roadmapId   Int
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  dueDate     DateTime?
+  sortOrder   Int       @default(0)
+  custom      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  roadmap ApplicationRoadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@index([roadmapId])
+}
+
+model DocumentChecklist {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  universityId  Int?
+  targetMajor   String?
+  degreeLevel   String
+  nationality   String?
+  languageTrack String
+  progress      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       StudentUser             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University?             @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  items      DocumentChecklistItem[]
+
+  @@index([userId])
+  @@index([universityId])
+}
+
+model DocumentChecklistItem {
+  id          Int      @id @default(autoincrement())
+  checklistId Int
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  optional    Boolean  @default(false)
+  custom      Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  checklist DocumentChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+}
+
+model EssayDraft {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  title            String
+  targetUniversity String?
+  targetMajor      String?
+  prompt           String?
+  content          String   @db.Text
+  feedback         Json?
+  wordCount        Int      @default(0)
+  characterCount   Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VisaChecklistItem {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  dueDate     DateTime?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CostEstimate {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  universityId  Int?
+  name          String
+  inputs        Json
+  breakdown     Json
+  monthlyCost   Int      @default(0)
+  semesterCost  Int      @default(0)
+  yearlyCost    Int      @default(0)
+  firstYearCost Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([universityId])
+}
+
+model EligibilityResult {
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  universityId        Int?
+  targetProgram       String
+  degreeLevel         String
+  educationLevel      String?
+  gpa                 Float?
+  englishScore        String?
+  koreanScore         String?
+  budget              Int?
+  nationality         String?
+  preferredLanguage   String?
+  status              String
+  score               Int      @default(0)
+  missingRequirements String[] @default([])
+  nextSteps           String[] @default([])
+  rawInput            Json
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user       StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([universityId])
+  @@index([status])
+}
+
+model UniversityReview {
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  universityId         Int
+  academics            Int
+  campusLife           Int
+  dormitory            Int
+  internationalSupport Int
+  difficulty           Int
+  costValue            Int
+  location             Int
+  overallRating        Int
+  comment              String   @db.Text
+  status               String   @default("pending")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user       StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University  @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([universityId])
+  @@index([status])
+  @@unique([userId, universityId])
+}
+
+model ReminderPreference {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int      @unique
+  emailEnabled            Boolean  @default(false)
+  applicationDeadline     Boolean  @default(true)
+  documentChecklist       Boolean  @default(true)
+  roadmapStep             Boolean  @default(true)
+  visaChecklist           Boolean  @default(true)
+  savedUniversityDeadline Boolean  @default(true)
+  reminderDays            Int[]    @default([30, 14, 7, 1])
+  customEmail             String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ScheduledReminder {
+  sourceKey String?
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  title     String
+  sendAt    DateTime
+  status    String   @default("scheduled")
+  metadata  Json?
+  lastError String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([sendAt])
+  @@unique([userId, sourceKey])
+}
+
+model FollowedUniversity {
+  userId       Int
+  universityId Int
+  createdAt    DateTime @default(now())
+
+  user       StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, universityId])
+  @@index([universityId])
+}
+
+model ManagedContent {
+  kind        String    @id
+  payload     Json
+  updatedById Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  updatedBy AdminUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
 }

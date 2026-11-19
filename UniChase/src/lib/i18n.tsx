@@ -1,11 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { getStoredLanguage, setStoredLanguage } from "@/lib/storage"
 
 export type Language = "en" | "ko" | "ru" | "uz"
 
 const labels = {
   en: {
+    follow: "Follow", followed: "Followed", unfollow: "Unfollow", save: "Save", unsave: "Remove saved",
     university: "University",
     reviews: "Reviews",
     news: "News",
@@ -21,6 +22,7 @@ const labels = {
     compare: "Compare",
   },
   ko: {
+    follow: "팔로우", followed: "팔로잉", unfollow: "팔로우 취소", save: "저장", unsave: "저장 취소",
     university: "대학교",
     reviews: "후기",
     news: "뉴스",
@@ -36,6 +38,7 @@ const labels = {
     compare: "비교",
   },
   ru: {
+    follow: "Подписаться", followed: "Подписка", unfollow: "Отписаться", save: "Сохранить", unsave: "Удалить из сохранённого",
     university: "Университеты",
     reviews: "Отзывы",
     news: "Новости",
@@ -51,6 +54,7 @@ const labels = {
     compare: "Сравнить",
   },
   uz: {
+    follow: "Kuzatish", followed: "Kuzatilmoqda", unfollow: "Kuzatmaslik", save: "Saqlash", unsave: "Saqlanganlardan olib tashlash",
     university: "Universitet",
     reviews: "Sharhlar",
     news: "Yangiliklar",
@@ -93,6 +97,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       t: (key) => labels[language][key] || labels.en[key],
     }
   }, [language])
+
+  useEffect(() => { document.documentElement.lang = language }, [language])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }

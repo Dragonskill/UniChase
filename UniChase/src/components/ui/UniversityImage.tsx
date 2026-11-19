@@ -37,16 +37,32 @@ function universityImageFallback(label: string, color = "#15397F", kind: "campus
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675">
-      <rect width="1200" height="675" fill="#f7f5ef"/>
-      <rect width="1200" height="675" fill="${color}" opacity=".12"/>
-      <rect x="170" y="225" width="860" height="260" rx="18" fill="${color}" opacity=".88"/>
-      <rect x="235" y="280" width="120" height="160" fill="#ffffff" opacity=".22"/>
-      <rect x="400" y="280" width="120" height="160" fill="#ffffff" opacity=".22"/>
-      <rect x="565" y="280" width="120" height="160" fill="#ffffff" opacity=".22"/>
-      <rect x="730" y="280" width="120" height="160" fill="#ffffff" opacity=".22"/>
-      <rect x="515" y="360" width="170" height="125" fill="#f7f5ef" opacity=".88"/>
-      <path d="M0 555 C230 480 390 610 610 515 C820 420 990 520 1200 440 L1200 675 L0 675 Z" fill="#98b9a5"/>
-      <text x="600" y="128" text-anchor="middle" font-family="Inter, Arial" font-size="54" font-weight="700" fill="${color}">${safeLabel}</text>
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#d9ebf4"/>
+          <stop offset=".58" stop-color="#f4eee4"/>
+          <stop offset="1" stop-color="#d8dfd4"/>
+        </linearGradient>
+        <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="${color}" stop-opacity=".88"/>
+          <stop offset="1" stop-color="${color}" stop-opacity=".58"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="675" fill="url(#sky)"/>
+      <circle cx="1010" cy="112" r="72" fill="#fff" opacity=".62"/>
+      <path d="M0 360 L170 245 L315 338 L485 205 L685 355 L865 235 L1200 382 L1200 675 L0 675 Z" fill="#839ca1" opacity=".34"/>
+      <path d="M0 410 C210 350 365 425 565 365 C785 300 980 390 1200 322 L1200 675 L0 675 Z" fill="#78967d" opacity=".54"/>
+      <rect x="158" y="300" width="884" height="246" rx="14" fill="url(#glass)"/>
+      <path d="M118 315 L600 154 L1082 315 Z" fill="${color}" opacity=".92"/>
+      <rect x="245" y="354" width="120" height="142" rx="4" fill="#eef5f5" opacity=".48"/>
+      <rect x="405" y="354" width="120" height="142" rx="4" fill="#eef5f5" opacity=".48"/>
+      <rect x="675" y="354" width="120" height="142" rx="4" fill="#eef5f5" opacity=".48"/>
+      <rect x="835" y="354" width="120" height="142" rx="4" fill="#eef5f5" opacity=".48"/>
+      <rect x="552" y="390" width="96" height="156" rx="48" fill="#f4eee4" opacity=".9"/>
+      <path d="M0 555 C230 478 390 615 610 520 C820 428 990 528 1200 452 L1200 675 L0 675 Z" fill="#6f957c"/>
+      <rect x="80" y="52" width="1040" height="108" rx="24" fill="#10243a" opacity=".7"/>
+      <text x="600" y="105" text-anchor="middle" font-family="Inter, Arial" font-size="38" font-weight="700" fill="#fff">${safeLabel}</text>
+      <text x="600" y="139" text-anchor="middle" font-family="Inter, Arial" font-size="19" fill="#fff" opacity=".82">Campus image pending verification</text>
     </svg>
   `)}`
 }
@@ -61,7 +77,8 @@ export default function UniversityImage({
   kind = "campus",
 }: UniversityImageProps) {
   const fallback = universityImageFallback(fallbackLabel, color, kind)
-  const [currentSrc, setCurrentSrc] = useState(src || fallback)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const currentSrc = !src || failedSrc === src ? fallback : src
 
   return (
     <img
@@ -69,7 +86,9 @@ export default function UniversityImage({
       alt={alt}
       loading={loading}
       decoding="async"
-      onError={() => setCurrentSrc(fallback)}
+      width={kind === "logo" ? 160 : 1200}
+      height={kind === "logo" ? 160 : 675}
+      onError={() => setFailedSrc(src || null)}
       className={className}
     />
   )

@@ -1,115 +1,57 @@
+import type { CSSProperties } from "react"
 import { Link } from "react-router-dom"
 import type { University } from "@/data/universities"
 import UniversityImage from "@/components/ui/UniversityImage"
+import { universityVerification } from "@/lib/universityDisplay"
+import { useI18n } from "@/lib/i18n"
 
 type Props = {
   uni: University
   isSaved?: boolean
+  isFollowed?: boolean
   isCompared?: boolean
   compareDisabled?: boolean
+  savePending?: boolean
+  followPending?: boolean
   onToggleSaved?: (id: number) => void
+  onToggleFollowed?: (id: number) => void
   onToggleCompare?: (id: number) => void
 }
 
-function UniversityCard({
-  uni,
-  isSaved = false,
-  isCompared = false,
-  compareDisabled = false,
-  onToggleSaved,
-  onToggleCompare,
-}: Props) {
+export default function UniversityCard({ uni, isSaved = false, isFollowed = false, isCompared = false, compareDisabled = false, savePending, followPending, onToggleSaved, onToggleFollowed, onToggleCompare }: Props) {
+  const { t } = useI18n()
   return (
-    <Link
-      to={`/universities/${uni.slug || uni.id}`}
-      className="university-card-link group focus:outline-none focus-visible:ring-2 focus-visible:ring-teal"
-    >
-      <article className="university-card-shell">
-        <div className="university-card-media bg-cream-dark">
-          <UniversityImage
-            src={uni.image}
-            alt={uni.imageAlt || `${uni.name} campus image`}
-            fallbackLabel={uni.name}
-            color={uni.mainColor}
-            className="h-full w-full object-cover object-center"
-          />
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              onToggleSaved?.(uni.id)
-            }}
-            className="absolute top-3 right-3 cursor-pointer bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-white"
-          >
-            {isSaved ? "Saved" : "+ Follow"}
-          </button>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col p-5">
-          <div className="grid min-h-[74px] grid-cols-[48px_minmax(0,1fr)] items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cream border border-gray-100">
-              <UniversityImage
-                src={uni.logo}
-                alt={`${uni.name} logo`}
-                fallbackLabel={uni.name}
-                color={uni.mainColor}
-                kind="logo"
-                className="h-10 w-10 object-contain"
-              />
-            </div>
-            <div className="min-w-0">
-              <h3
-                className="min-h-[44px] text-lg font-bold leading-tight line-clamp-2"
-                style={{ color: uni.mainColor }}
-              >
-                {uni.name}
-              </h3>
-              <p className="truncate text-sm text-gray-500">{uni.location}</p>
-            </div>
+    <article className="university-card-link university-card-shell group relative">
+      <div className="university-card-media bg-cream-dark">
+        <UniversityImage src={uni.image} alt={uni.imageAlt || `${uni.name} campus`} fallbackLabel={uni.name} color={uni.mainColor} className="h-full w-full object-cover object-center" />
+        {onToggleFollowed && <button type="button" disabled={followPending} aria-pressed={isFollowed} aria-label={`${isFollowed ? t('unfollow') : t('follow')} ${uni.name}`} onClick={() => onToggleFollowed(uni.id)} className={`university-follow-button z-10 ${isFollowed ? "university-follow-button--saved" : ""}`}>{isFollowed ? t('followed') : `+ ${t('follow')}`}</button>}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-5 sm:p-6">
+        <div className="grid min-h-[70px] grid-cols-[52px_minmax(0,1fr)] items-start gap-3">
+          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-xl border border-gray-100 bg-cream">
+            <UniversityImage src={uni.logo} alt={`${uni.name} logo`} fallbackLabel={uni.name} color={uni.mainColor} kind="logo" className="h-11 w-11 object-contain" />
           </div>
-
-          {/* QS + acceptance rate */}
-          <div className="mt-4 min-h-[78px] flex flex-col gap-2 border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-2">
-              <img
-                src="https://files.bpcontent.cloud/2025/06/20/06/20250620064449-IG082B2O.png"
-                alt="QS"
-                className="h-5 w-auto rounded"
-              />
-              <span className="text-sm text-gray-700">QS: {uni.qsRanking || "Not available"}</span>
-            </div>
-            <span className="text-sm text-gray-700">
-              Acceptance rate: {uni.acceptanceRate || "Not available"}
-            </span>
-            <span className="w-fit rounded-full border border-gray-200 bg-cream px-2.5 py-0.5 text-xs text-muted">
-              {uni.imageLastVerifiedAt || uni.lastVerifiedAt ? "Verified" : "Needs verification"}
-            </span>
+          <div className="min-w-0">
+            <h3 className="university-card-title min-h-[46px] text-[1.05rem] font-bold leading-[1.35] line-clamp-2 sm:text-lg" style={{ "--uni-color": uni.mainColor } as CSSProperties}>
+              <Link to={`/universities/${uni.slug || uni.id}`} className="university-card-main-link" title={uni.name}>{uni.name}</Link>
+            </h3>
+            <p className="truncate text-sm text-muted">{uni.location}</p>
           </div>
-
-          <p className="mt-4 min-h-[60px] text-sm text-gray-600 line-clamp-3">
-            {uni.description}
-          </p>
-
-          {onToggleCompare && (
-            <label
-              onClick={(e) => e.stopPropagation()}
-              className="mt-auto flex items-center gap-2 pt-4 text-sm text-gray-700"
-            >
-              <input
-                type="checkbox"
-                checked={isCompared}
-                disabled={!isCompared && compareDisabled}
-                onChange={(e) => {
-                  e.preventDefault()
-                  onToggleCompare(uni.id)
-                }}
-                className="h-4 w-4 rounded border-gray-300 text-teal focus:ring-teal"
-              />
-              Compare
-            </label>
-          )}
         </div>
-      </article>
-    </Link>
+        <div className="mt-3 min-h-[96px] flex flex-col gap-2 border-b border-gray-100 pb-4 text-sm text-gray-700">
+          <span className="flex items-center gap-2">
+            <span className="inline-flex h-5 min-w-6 items-center justify-center rounded bg-[#E9AD2E] px-1 text-[10px] font-bold tracking-tight text-white" aria-hidden="true">QS</span>
+            <span>QS {uni.qsRankingYear || "ranking"}: {uni.qsRanking || "Not verified"}</span>
+          </span>
+          <span><span className="font-medium text-navy">Acceptance rate:</span> {uni.acceptanceRate || "Not verified"}</span>
+          <span className="w-fit rounded-full border border-gray-200 bg-cream px-2.5 py-0.5 text-xs text-muted">{universityVerification(uni)}</span>
+        </div>
+        <p className="mt-4 min-h-[40px] text-sm leading-5 text-gray-600 line-clamp-2">{uni.description}</p>
+        <div className="relative z-10 mt-auto flex items-center justify-between gap-2 pt-3 text-sm">
+          {onToggleSaved && <button type="button" disabled={savePending} aria-pressed={isSaved} aria-label={`${isSaved ? t('unsave') : t('save')} ${uni.name}`} onClick={() => onToggleSaved(uni.id)} className={`rounded-full border px-3 py-1.5 ${isSaved ? "border-teal bg-teal/10 text-teal" : "border-gray-200 text-muted hover:border-teal"}`}>{isSaved ? t('saved') : t('save')}</button>}
+          {onToggleCompare && <label className="flex cursor-pointer items-center gap-2 text-gray-700"><input type="checkbox" checked={isCompared} disabled={!isCompared && compareDisabled} onChange={() => onToggleCompare(uni.id)} className="h-4 w-4 accent-teal" />{t('compare')}</label>}
+        </div>
+      </div>
+    </article>
   )
 }
-export default UniversityCard

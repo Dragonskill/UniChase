@@ -2,14 +2,21 @@ import cors from "cors"
 import express from "express"
 import rateLimit from "express-rate-limit"
 import helmet from "helmet"
-import { getCorsOrigins } from "./config.js"
+import { getCorsOrigins, getTrustProxyHops } from "./config.js"
 import { errorHandler, notFoundHandler } from "./errors.js"
+import { createAnalyticsRouter } from "./routes/analytics.js"
 import { createAdminUniversityRouter } from "./routes/adminUniversities.js"
 import { createAuthRouter } from "./routes/auth.js"
+import { createCommunityRouter } from "./routes/community.js"
+import { createContentRouter } from "./routes/content.js"
 import { createContactRouter } from "./routes/contact.js"
 import { createModeratorRouter } from "./routes/moderator.js"
+import { createNotificationRouter } from "./routes/notifications.js"
 import { createStudentCouncilRouter } from "./routes/studentCouncils.js"
+import { createProgramRouter } from "./routes/programs.js"
+import { createReviewsRouter } from "./routes/reviews.js"
 import { createStudentAuthRouter } from "./routes/studentAuth.js"
+import { createStudentToolsRouter } from "./routes/studentTools.js"
 import { createUserRouter } from "./routes/user.js"
 import { createUniversityRouter } from "./routes/universities.js"
 
@@ -17,6 +24,7 @@ export function createApp({ prisma }) {
   const app = express()
 
   app.disable("x-powered-by")
+  app.set("trust proxy", getTrustProxyHops())
   app.use(helmet())
   app.use(
     cors({
@@ -25,6 +33,18 @@ export function createApp({ prisma }) {
     }),
   )
   app.use(express.json({ limit: "1mb" }))
+  app.get("/api/health", (req, res) => {
+    res.set("Cache-Control", "no-store").json({ data: { status: "ok" } })
+  })
+  app.get("/api/ready", async (req, res) => {
+    res.set("Cache-Control", "no-store")
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      res.json({ data: { status: "ready" } })
+    } catch {
+      res.status(503).json({ error: { message: "Service temporarily unavailable" } })
+    }
+  })
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -34,14 +54,17 @@ export function createApp({ prisma }) {
     }),
   )
 
-  app.get("/api/health", (req, res) => {
-    res.json({ data: { status: "ok" } })
-  })
-
   app.use("/api/universities", createUniversityRouter(prisma))
   app.use("/api/student-councils", createStudentCouncilRouter(prisma))
+  app.use("/api/community", createCommunityRouter(prisma))
+  app.use("/api/notifications", createNotificationRouter(prisma))
+  app.use("/api/analytics", createAnalyticsRouter(prisma))
+  app.use("/api/programs", createProgramRouter(prisma))
+  app.use("/api/reviews", createReviewsRouter(prisma))
   app.use("/api/auth", createStudentAuthRouter(prisma))
   app.use("/api/user", createUserRouter(prisma))
+  app.use("/api/student-tools", createStudentToolsRouter(prisma))
+  app.use("/api/content", createContentRouter(prisma))
   app.use("/api/contact", createContactRouter(prisma))
   app.use("/api/admin", createAuthRouter(prisma))
   app.use("/api/admin/universities", createAdminUniversityRouter(prisma))

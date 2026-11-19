@@ -1,4 +1,5 @@
 const savedKey = "unichase.savedUniversities"
+const followedKey = "unichase.followedUniversities"
 const compareKey = "unichase.compareUniversities"
 const deadlineKey = "unichase.deadlines"
 const recentSearchKey = "unichase.recentSearches"
@@ -8,6 +9,16 @@ const userKey = "unichase.studentUser"
 const languageKey = "unichase.language"
 
 export const authChangeEvent = "unichase:auth-change"
+export const universityStateChangeEvent = "unichase:university-state-change"
+
+function accountKey(key: string) {
+  const user = getStoredUser<{ id: number }>()
+  return getToken() && user?.id ? `${key}.user.${user.id}` : key
+}
+
+function validIds(value: unknown, limit: number): number[] {
+  return Array.isArray(value) ? [...new Set(value.filter((id) => Number.isSafeInteger(id) && id > 0))].slice(0, limit) : []
+}
 
 function notifyAuthChange() {
   if (typeof window !== "undefined") {
@@ -25,15 +36,28 @@ function readJson<T>(key: string, fallback: T): T {
 }
 
 function writeJson(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+    window.dispatchEvent(new Event(universityStateChangeEvent))
+  } catch {
+    // Storage can be unavailable in private browsing or when the quota is full.
+  }
 }
 
 export function getSavedUniversityIds() {
-  return readJson<number[]>(savedKey, [])
+  return validIds(readJson(accountKey(savedKey), []), 100)
 }
 
 export function setSavedUniversityIds(ids: number[]) {
-  writeJson(savedKey, [...new Set(ids)].slice(0, 100))
+  writeJson(accountKey(savedKey), validIds(ids, 100))
+}
+
+export function getFollowedUniversityIds() {
+  return validIds(readJson(accountKey(followedKey), []), 100)
+}
+
+export function setFollowedUniversityIds(ids: number[]) {
+  writeJson(accountKey(followedKey), validIds(ids, 100))
 }
 
 export function toggleSavedUniversity(id: number) {
@@ -44,11 +68,11 @@ export function toggleSavedUniversity(id: number) {
 }
 
 export function getCompareUniversityIds() {
-  return readJson<number[]>(compareKey, [])
+  return validIds(readJson(compareKey, []), 4)
 }
 
 export function setCompareUniversityIds(ids: number[]) {
-  writeJson(compareKey, [...new Set(ids)].slice(0, 4))
+  writeJson(compareKey, validIds(ids, 4))
 }
 
 export function toggleCompareUniversity(id: number) {
@@ -65,18 +89,20 @@ export type LocalDeadline = {
 }
 
 export function getLocalDeadlines() {
-  return readJson<LocalDeadline[]>(deadlineKey, [])
+  const items = readJson<LocalDeadline[]>(accountKey(deadlineKey), [])
+  return Array.isArray(items) ? items : []
 }
 
 export function saveLocalDeadline(deadline: LocalDeadline) {
   const existing = getLocalDeadlines().filter(
     (item) => !(item.universityId === deadline.universityId && item.deadlineType === deadline.deadlineType),
   )
-  writeJson(deadlineKey, [...existing, deadline])
+  writeJson(accountKey(deadlineKey), [...existing, deadline])
 }
 
 export function getRecentSearches() {
-  return readJson<string[]>(recentSearchKey, [])
+  const items = readJson<string[]>(recentSearchKey, [])
+  return Array.isArray(items) ? items.filter((item) => typeof item === "string").slice(0, 5) : []
 }
 
 export function addRecentSearch(query: string) {
@@ -98,7 +124,8 @@ export type RecentlyViewedUniversity = {
 }
 
 export function getRecentlyViewedUniversities() {
-  return readJson<RecentlyViewedUniversity[]>(recentlyViewedKey, [])
+  const items = readJson<RecentlyViewedUniversity[]>(recentlyViewedKey, [])
+  return Array.isArray(items) ? items.filter((item) => item && Number.isSafeInteger(item.id)).slice(0, 6) : []
 }
 
 export function addRecentlyViewedUniversity(university: Omit<RecentlyViewedUniversity, "viewedAt">) {
@@ -112,17 +139,22 @@ export function addRecentlyViewedUniversity(university: Omit<RecentlyViewedUnive
 }
 
 export function getToken() {
-  return localStorage.getItem(tokenKey)
+  try {
+    const token = localStorage.getItem(tokenKey)
+    return token?.startsWith("local-") ? null : token
+  } catch { return null }
 }
 
 export function setToken(token: string) {
-  localStorage.setItem(tokenKey, token)
+  try { localStorage.setItem(tokenKey, token) } catch { return }
   notifyAuthChange()
 }
 
 export function clearToken() {
-  localStorage.removeItem(tokenKey)
-  localStorage.removeItem(userKey)
+  try {
+    localStorage.removeItem(tokenKey)
+    localStorage.removeItem(userKey)
+  } catch { /* The in-memory UI still receives the logout event. */ }
   notifyAuthChange()
 }
 
@@ -136,9 +168,9 @@ export function setStoredUser(user: unknown) {
 }
 
 export function getStoredLanguage() {
-  return localStorage.getItem(languageKey) || "en"
+  try { return localStorage.getItem(languageKey) || "en" } catch { return "en" }
 }
 
 export function setStoredLanguage(language: string) {
-  localStorage.setItem(languageKey, language)
+  try { localStorage.setItem(languageKey, language) } catch { /* Keep this session usable. */ }
 }
